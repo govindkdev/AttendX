@@ -1,0 +1,1300 @@
+/*
+=========================================================
+ATTENDX LOGIN PAGE
+=========================================================
+*/
+
+.ax-login-page {
+  min-height: 100vh;
+
+  display: grid;
+
+  grid-template-columns: 42% 58%;
+
+  background: #f6f8fb;
+
+  color: #172033;
+
+  font-family:
+    Inter,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+
+/* =====================================================
+   LEFT
+===================================================== */
+
+.ax-login-left {
+  position: relative;
+
+  min-height: 100vh;
+
+  overflow: hidden;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: space-between;
+
+  padding:
+    38px clamp(28px, 4vw, 62px);
+
+  color: white;
+
+  background:
+    radial-gradient(
+      circle at 88% 16%,
+      rgba(101,215,226,.16),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 15% 88%,
+      rgba(91,95,239,.25),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      #080f1e,
+      #10182c 55%,
+      #141d34
+    );
+}
+
+
+.ax-grid {
+  position: absolute;
+
+  inset: 0;
+
+  opacity: .15;
+
+  background-image:
+    linear-gradient(
+      rgba(255,255,255,.055) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.055) 1px,
+      transparent 1px
+    );
+
+  background-size: 48px 48px;
+}
+
+
+/* =====================================================
+   BRAND
+===================================================== */
+
+.ax-login-brand {
+  position: relative;
+
+  z-index: 2;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  width: fit-content;
+
+  color: white;
+
+  text-decoration: none;
+}
+
+
+.ax-login-brand strong {
+  display: block;
+
+  font-family:
+    "Space Grotesk",
+    "Segoe UI",
+    sans-serif;
+
+  font-size: 20px;
+
+  letter-spacing: -.04em;
+}
+
+
+.ax-login-brand small {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #8390a7;
+
+  font-size: 6px;
+
+  letter-spacing: .12em;
+
+  text-transform: uppercase;
+}
+
+
+.ax-logo {
+  position: relative;
+
+  width: 41px;
+  height: 41px;
+
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7478ff,
+      #5055df
+    );
+
+  box-shadow:
+    0 10px 28px
+    rgba(91,95,239,.30);
+}
+
+
+.ax-logo::before {
+  content: "";
+
+  position: absolute;
+
+  top: 9px;
+  left: 9px;
+
+  width: 11px;
+  height: 11px;
+
+  border:
+    2px solid white;
+
+  border-right: 0;
+  border-bottom: 0;
+}
+
+
+.ax-logo::after {
+  content: "";
+
+  position: absolute;
+
+  right: 9px;
+  bottom: 9px;
+
+  width: 11px;
+  height: 11px;
+
+  border:
+    2px solid white;
+
+  border-left: 0;
+  border-top: 0;
+}
+
+
+.ax-logo-dot {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  width: 5px;
+  height: 5px;
+
+  transform:
+    translate(-50%, -50%);
+
+  border-radius: 50%;
+
+  background: #65d7e2;
+
+  box-shadow:
+    0 0 12px #65d7e2;
+}
+
+
+/* =====================================================
+   LEFT CONTENT
+===================================================== */
+
+.ax-left-content {
+  position: relative;
+
+  z-index: 2;
+
+  max-width: 530px;
+
+  margin:
+    auto 0;
+}
+
+
+.ax-overline {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #65d7e2;
+
+  font-size: 7px;
+
+  font-weight: 800;
+
+  letter-spacing: .15em;
+}
+
+
+.ax-overline::before {
+  content: "";
+
+  width: 18px;
+  height: 1px;
+
+  background: #65d7e2;
+}
+
+
+.ax-left-content h2 {
+  margin:
+    17px 0 0;
+
+  font-family:
+    "Space Grotesk",
+    "Segoe UI",
+    sans-serif;
+
+  font-size:
+    clamp(38px, 4.3vw, 60px);
+
+  line-height: .98;
+
+  letter-spacing: -.055em;
+}
+
+
+.ax-left-content h2 span {
+  display: block;
+
+  color: #65d7e2;
+}
+
+
+.ax-left-content > p {
+  max-width: 450px;
+
+  margin:
+    20px 0 0;
+
+  color: #aab5c8;
+
+  font-size: 11px;
+
+  line-height: 1.8;
+}
+
+
+/* =====================================================
+   SYSTEM CARD
+===================================================== */
+
+.ax-system-card {
+  max-width: 440px;
+
+  margin-top: 28px;
+
+  padding: 15px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.09);
+
+  border-radius: 14px;
+
+  background:
+    rgba(255,255,255,.045);
+
+  backdrop-filter:
+    blur(15px);
+}
+
+
+.ax-system-top {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+}
+
+
+.ax-system-top > span {
+  color: #7f8ca2;
+
+  font-size: 6px;
+
+  font-weight: 800;
+
+  letter-spacing: .12em;
+}
+
+
+.ax-system-top b {
+  color: #6cdeaa;
+
+  font-size: 5px;
+
+  letter-spacing: .05em;
+}
+
+
+.ax-system-body {
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+
+  margin-top: 15px;
+}
+
+
+.ax-scan {
+  position: relative;
+
+  width: 67px;
+  height: 67px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border:
+    1px solid
+    rgba(101,215,226,.22);
+
+  border-radius: 50%;
+}
+
+
+.ax-scan::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 9px;
+
+  border:
+    1px solid
+    rgba(101,215,226,.18);
+
+  border-radius: 50%;
+}
+
+
+.ax-scan-ring {
+  position: absolute;
+
+  inset: 0;
+
+  border:
+    2px solid transparent;
+
+  border-top-color: #65d7e2;
+
+  border-radius: 50%;
+
+  animation:
+    axRotate 2.4s linear infinite;
+}
+
+
+@keyframes axRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+.ax-scan-icon {
+  width: 29px;
+  height: 29px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  color: #65d7e2;
+
+  background:
+    rgba(101,215,226,.08);
+}
+
+
+.ax-system-body strong {
+  display: block;
+
+  color: white;
+
+  font-size: 9px;
+}
+
+
+.ax-system-body p {
+  margin:
+    4px 0 7px;
+
+  color: #7d899d;
+
+  font-size: 6px;
+}
+
+
+.ax-system-body small {
+  color: #6dddab;
+
+  font-size: 6px;
+
+  font-weight: 800;
+}
+
+
+/* =====================================================
+   LEFT FOOTER
+===================================================== */
+
+.ax-left-footer {
+  position: relative;
+
+  z-index: 2;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  color: #68758c;
+
+  font-size: 6px;
+}
+
+
+/* =====================================================
+   RIGHT
+===================================================== */
+
+.ax-login-right {
+  min-height: 100vh;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding:
+    42px clamp(28px, 6vw, 90px);
+
+  background: #f7f8fb;
+}
+
+
+.ax-login-inner {
+  width: 100%;
+
+  max-width: 585px;
+}
+
+
+.ax-back-home {
+  display: flex;
+
+  justify-content: flex-end;
+
+  margin-bottom: 27px;
+
+  color: #667085;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+.ax-back-home:hover {
+  color: #5b5fef;
+}
+
+
+/* =====================================================
+   HEADING
+===================================================== */
+
+.ax-login-heading {
+  margin-bottom: 25px;
+}
+
+
+.ax-login-heading > span {
+  color: #5b5fef;
+
+  font-size: 7px;
+
+  font-weight: 800;
+
+  letter-spacing: .14em;
+}
+
+
+.ax-login-heading h1 {
+  margin:
+    8px 0 0;
+
+  font-family:
+    "Space Grotesk",
+    "Segoe UI",
+    sans-serif;
+
+  font-size:
+    clamp(34px, 4vw, 48px);
+
+  line-height: 1;
+
+  letter-spacing: -.05em;
+}
+
+
+.ax-login-heading p {
+  margin:
+    11px 0 0;
+
+  color: #667085;
+
+  font-size: 10px;
+
+  line-height: 1.7;
+}
+
+
+/* =====================================================
+   ROLE
+===================================================== */
+
+.ax-role-title {
+  margin-bottom: 8px;
+
+  color: #344054;
+
+  font-size: 8px;
+
+  font-weight: 800;
+
+  letter-spacing: .06em;
+
+  text-transform: uppercase;
+}
+
+
+.ax-role-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 8px;
+}
+
+
+.ax-role-card {
+  position: relative;
+
+  min-height: 68px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 9px;
+
+  border:
+    1px solid
+    #e0e5ec;
+
+  border-radius: 10px;
+
+  background: white;
+
+  color: #172033;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: .2s ease;
+}
+
+
+.ax-role-card:hover {
+  transform: translateY(-2px);
+
+  border-color:
+    #bfc3f7;
+
+  box-shadow:
+    0 10px 24px
+    rgba(16,24,40,.06);
+}
+
+
+.ax-role-card.active {
+  border-color:
+    #5b5fef;
+
+  background:
+    #fafaff;
+
+  box-shadow:
+    0 8px 24px
+    rgba(91,95,239,.09);
+}
+
+
+.ax-role-icon {
+  width: 34px;
+  height: 34px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 9px;
+
+  color: #5b5fef;
+
+  background: #f0f1ff;
+}
+
+
+.ax-role-card.active
+.ax-role-icon {
+  color: white;
+
+  background: #5b5fef;
+}
+
+
+.ax-role-card strong {
+  display: block;
+
+  font-size: 8px;
+
+  font-weight: 800;
+}
+
+
+.ax-role-card span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #98a2b3;
+
+  font-size: 5.5px;
+}
+
+
+.ax-role-check {
+  position: absolute;
+
+  top: 7px;
+  right: 7px;
+
+  width: 15px;
+  height: 15px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 50%;
+
+  color: white;
+
+  background: #5b5fef;
+
+  opacity: 0;
+}
+
+
+.ax-role-card.active
+.ax-role-check {
+  opacity: 1;
+}
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.ax-login-form {
+  margin-top: 19px;
+
+  padding-top: 19px;
+
+  border-top:
+    1px solid #e7eaf0;
+
+  animation:
+    axFormIn .22s ease;
+}
+
+
+@keyframes axFormIn {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(7px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+}
+
+
+.ax-selected-role {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  margin-bottom: 17px;
+
+  padding: 9px 10px;
+
+  border-radius: 9px;
+
+  background: #f1f3f7;
+}
+
+
+.ax-selected-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+
+.ax-selected-icon {
+  width: 31px;
+  height: 31px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  color: #5b5fef;
+
+  background: white;
+}
+
+
+.ax-selected-role small {
+  display: block;
+
+  color: #98a2b3;
+
+  font-size: 5.5px;
+
+  font-weight: 800;
+
+  letter-spacing: .08em;
+}
+
+
+.ax-selected-role strong {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 8.5px;
+}
+
+
+.ax-selected-role button {
+  border: 0;
+
+  color: #5b5fef;
+
+  background: transparent;
+
+  font-size: 7px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   INPUTS
+===================================================== */
+
+.ax-field {
+  margin-bottom: 14px;
+}
+
+
+.ax-field > label,
+.ax-password-head label {
+  color: #344054;
+
+  font-size: 7.5px;
+
+  font-weight: 800;
+}
+
+
+.ax-field > label {
+  display: block;
+
+  margin-bottom: 6px;
+}
+
+
+.ax-password-head {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  margin-bottom: 6px;
+}
+
+
+.ax-forgot-button {
+  border: 0;
+
+  padding: 0;
+
+  color: #5b5fef;
+
+  background: transparent;
+
+  font-size: 7px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+
+.ax-input {
+  height: 45px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 0 10px;
+
+  border:
+    1px solid #dfe4eb;
+
+  border-radius: 9px;
+
+  background: white;
+
+  transition: .2s ease;
+}
+
+
+.ax-input:focus-within {
+  border-color: #7276ef;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(91,95,239,.05);
+}
+
+
+.ax-input > svg {
+  flex-shrink: 0;
+
+  color: #9aa5b6;
+}
+
+
+.ax-input input {
+  width: 100%;
+
+  min-width: 0;
+
+  height: 42px;
+
+  border: 0;
+
+  outline: 0;
+
+  color: #172033;
+
+  background: transparent;
+
+  font-size: 9px;
+}
+
+
+.ax-input input::placeholder {
+  color: #b0b8c4;
+}
+
+
+.ax-eye {
+  width: 27px;
+  height: 27px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border: 0;
+
+  color: #9aa5b6;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   REMEMBER
+===================================================== */
+
+.ax-remember {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  margin:
+    1px 0 13px;
+
+  color: #667085;
+
+  font-size: 7px;
+
+  cursor: pointer;
+}
+
+
+.ax-remember input {
+  width: 13px;
+  height: 13px;
+
+  margin: 0;
+
+  accent-color: #5b5fef;
+}
+
+
+/* =====================================================
+   MESSAGE
+===================================================== */
+
+.ax-message {
+  margin-bottom: 12px;
+
+  padding: 9px 10px;
+
+  border:
+    1px solid #dfe3f8;
+
+  border-radius: 8px;
+
+  color: #637087;
+
+  background: #f7f8ff;
+
+  font-size: 7px;
+
+  line-height: 1.5;
+}
+
+
+/* =====================================================
+   BUTTON
+===================================================== */
+
+.ax-sign-button {
+  width: 100%;
+
+  height: 45px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  border: 0;
+
+  border-radius: 9px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #6e72ff,
+      #5559e5
+    );
+
+  box-shadow:
+    0 10px 20px
+    rgba(91,95,239,.17);
+
+  font-size: 8.5px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition: .2s ease;
+}
+
+
+.ax-sign-button:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 14px 25px
+    rgba(91,95,239,.22);
+}
+
+
+/* =====================================================
+   REGISTER
+===================================================== */
+
+.ax-register {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 5px;
+
+  margin-top: 17px;
+
+  color: #98a2b3;
+
+  font-size: 6.5px;
+}
+
+
+.ax-register a {
+  color: #5b5fef;
+
+  font-weight: 800;
+
+  text-decoration: none;
+}
+
+
+/* =====================================================
+   SECURITY
+===================================================== */
+
+.ax-security {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 5px;
+
+  margin-top: 13px;
+
+  padding-top: 11px;
+
+  border-top:
+    1px solid #ebedf1;
+
+  color: #a0a8b3;
+
+  font-size: 6px;
+}
+
+
+.ax-security > span {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: #18a36e;
+
+  box-shadow:
+    0 0 8px
+    rgba(24,163,110,.35);
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1000px) {
+
+  .ax-login-page {
+    grid-template-columns: 1fr;
+  }
+
+
+  .ax-login-left {
+    min-height: 430px;
+
+    padding:
+      30px 7vw;
+  }
+
+
+  .ax-left-content {
+    margin:
+      55px 0 40px;
+  }
+
+
+  .ax-left-footer {
+    display: none;
+  }
+
+
+  .ax-login-right {
+    min-height:
+      auto;
+
+    padding:
+      60px 7vw 80px;
+  }
+
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 600px) {
+
+  .ax-login-left {
+    min-height:
+      330px;
+
+    padding:
+      24px 20px 28px;
+  }
+
+
+  .ax-left-content {
+    margin:
+      40px 0 0;
+  }
+
+
+  .ax-left-content h2 {
+    font-size:
+      37px;
+  }
+
+
+  .ax-left-content > p {
+    font-size:
+      10px;
+  }
+
+
+  .ax-system-card {
+    display:
+      none;
+  }
+
+
+  .ax-login-right {
+    padding:
+      38px 20px 60px;
+  }
+
+
+  .ax-back-home {
+    display:
+      none;
+  }
+
+
+  .ax-login-heading h1 {
+    font-size:
+      34px;
+  }
+
+
+  .ax-role-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .ax-role-card {
+    min-height:
+      61px;
+  }
+
+}

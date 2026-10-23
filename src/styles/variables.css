@@ -1,0 +1,73 @@
+/*
+=========================================================
+ATTENDX - DESIGN SYSTEM & CSS VARIABLES
+=========================================================
+Brand identity:
+- Product name: AttendX
+- Tagline: Smart Attendance Infrastructure
+- Space Grotesk for headings
+- Inter for body and controls
+=========================================================
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  /* Brand Colors */
+  --attendx-indigo: #5B5FEF;
+  --attendx-indigo-dark: #5156E4;
+  --attendx-indigo-light: #EEF0FF;
+  --attendx-aqua: #65D7E2;
+  --attendx-aqua-dark: #37B9C7;
+  --attendx-navy: #0B1020;
+  --attendx-navy-surface: #12192F;
+  --attendx-navy-border: #1E2949;
+
+  /* Surfaces & Backgrounds */
+  --attendx-bg: #F5F7FB;
+  --attendx-surface: #FFFFFF;
+  --attendx-surface-subtle: #F9FAFC;
+
+  /* Typography */
+  --attendx-text-primary: #172033;
+  --attendx-text-muted: #667085;
+  --attendx-text-subtle: #98A2B3;
+  --attendx-text-inverse: #FFFFFF;
+
+  /* Borders & Dividers */
+  --attendx-border: #E3E7EF;
+  --attendx-border-focus: #5B5FEF;
+
+  /* Status Colors */
+  --attendx-success: #129B67;
+  --attendx-success-bg: #E7F7F0;
+  --attendx-error: #D85A64;
+  --attendx-error-bg: #FDF0F1;
+  --attendx-warning: #E08714;
+  --attendx-warning-bg: #FEF6EB;
+  --attendx-info: #2B75E6;
+  --attendx-info-bg: #EAF2FD;
+
+  /* Fonts */
+  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(16, 24, 40, 0.1), 0 4px 6px -2px rgba(16, 24, 40, 0.05);
+  --shadow-glow: 0 8px 24px rgba(91, 95, 239, 0.25);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}

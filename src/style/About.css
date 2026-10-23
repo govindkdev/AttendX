@@ -1,0 +1,1643 @@
+/*
+=========================================================
+ATTENDX - ABOUT CSS
+=========================================================
+IMPORTANT:
+The orbit cards actually move around the center.
+Cards remain readable using counter rotation.
+=========================================================
+*/
+
+.attendx-about {
+
+  --primary: #5b5fef;
+  --aqua: #65d7e2;
+  --green: #129b67;
+
+  --dark: #0b1020;
+  --text: #667085;
+  --muted: #929aad;
+
+  --line: #e3e7ef;
+  --bg: #f5f7fb;
+
+  width: 100%;
+  min-height: 100vh;
+
+  overflow-x: hidden;
+
+  color: var(--dark);
+  background: var(--bg);
+
+  font-family:
+    "Inter",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+
+.attendx-about *,
+.attendx-about *::before,
+.attendx-about *::after {
+  box-sizing: border-box;
+}
+
+
+.about-container {
+  width:
+    min(
+      1240px,
+      calc(100% - 48px)
+    );
+
+  margin: 0 auto;
+}
+
+
+.about-reveal {
+
+  opacity: 0;
+
+  transform:
+    translateY(24px);
+
+  transition:
+    opacity .72s ease,
+    transform .72s ease;
+}
+
+
+.about-visible {
+
+  opacity: 1;
+
+  transform:
+    translateY(0);
+}
+
+
+/* =====================================================
+   KICKER
+===================================================== */
+
+.about-kicker {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: var(--primary);
+
+  font-size: 9px;
+
+  font-weight: 800;
+
+  letter-spacing: .15em;
+
+  text-transform: uppercase;
+}
+
+
+.about-kicker::before {
+
+  content: "";
+
+  width: 18px;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--primary),
+      var(--aqua)
+    );
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.about-header {
+
+  position: fixed;
+
+  top: 0;
+  left: 0;
+  right: 0;
+
+  z-index: 9999;
+
+  height: 76px;
+
+  background:
+    rgba(249,251,255,.93);
+
+  border-bottom:
+    1px solid
+    rgba(211,217,230,.85);
+
+  backdrop-filter: blur(18px);
+}
+
+
+.about-header-inner {
+
+  width:
+    min(
+      1320px,
+      calc(100% - 36px)
+    );
+
+  height: 100%;
+
+  margin: 0 auto;
+
+  display:
+    flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 25px;
+}
+
+
+.about-brand {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  color: inherit;
+
+  text-decoration: none;
+}
+
+
+.about-logo {
+
+  position: relative;
+
+  width: 41px;
+  height: 41px;
+
+  overflow: hidden;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #777bff,
+      #555ae4 55%,
+      #3438a8
+    );
+}
+
+
+.about-logo-one,
+.about-logo-two {
+
+  position: absolute;
+
+  width: 12px;
+  height: 12px;
+
+  border: 2px solid white;
+}
+
+
+.about-logo-one {
+
+  left: 9px;
+  top: 9px;
+
+  border-right: 0;
+  border-bottom: 0;
+}
+
+
+.about-logo-two {
+
+  right: 9px;
+  bottom: 9px;
+
+  border-left: 0;
+  border-top: 0;
+}
+
+
+.about-logo-dot {
+
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  width: 5px;
+  height: 5px;
+
+  transform:
+    translate(-50%,-50%);
+
+  border-radius: 50%;
+
+  background:
+    var(--aqua);
+}
+
+
+.about-brand-copy strong,
+.about-brand-copy small {
+  display: block;
+}
+
+
+.about-brand-copy strong {
+
+  font:
+    700 17px
+    "Space Grotesk",
+    sans-serif;
+}
+
+
+.about-brand-copy small {
+
+  margin-top: 2px;
+
+  color: #8f98aa;
+
+  font-size: 8px;
+
+  letter-spacing: .06em;
+
+  text-transform: uppercase;
+}
+
+
+.about-nav {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 24px;
+}
+
+
+.about-nav a {
+
+  position: relative;
+
+  color: #5b6477;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+
+.about-nav a.active,
+.about-nav a:hover {
+  color: var(--primary);
+}
+
+
+.about-nav a::after {
+
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: -8px;
+
+  height: 2px;
+
+  background: var(--primary);
+
+  transform: scaleX(0);
+
+  transition: .2s ease;
+}
+
+
+.about-nav a.active::after,
+.about-nav a:hover::after {
+
+  transform: scaleX(1);
+}
+
+
+.about-header-button {
+
+  min-height: 43px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 16px;
+
+  border-radius: 11px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7074ff,
+      #5156e4
+    );
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  text-decoration: none;
+}
+
+
+/* =====================================================
+   HERO
+===================================================== */
+
+.about-hero {
+
+  position: relative;
+
+  min-height:
+    calc(100vh - 76px);
+
+  padding-top: 76px;
+
+  display: flex;
+
+  align-items: center;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 86% 20%,
+      rgba(101,215,226,.13),
+      transparent 24%
+    ),
+
+    radial-gradient(
+      circle at 61% 54%,
+      rgba(91,95,239,.14),
+      transparent 31%
+    ),
+
+    linear-gradient(
+      180deg,
+      #fafcff,
+      #f3f5fa
+    );
+}
+
+
+.about-grid {
+
+  position: absolute;
+
+  inset: 0;
+
+  opacity: .34;
+
+  background-image:
+
+    linear-gradient(
+      rgba(91,95,239,.045) 1px,
+      transparent 1px
+    ),
+
+    linear-gradient(
+      90deg,
+      rgba(91,95,239,.045) 1px,
+      transparent 1px
+    );
+
+  background-size: 55px 55px;
+}
+
+
+.about-hero-layout {
+
+  position: relative;
+
+  z-index: 2;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0,.88fr)
+    minmax(0,1.12fr);
+
+  align-items: center;
+
+  gap: 70px;
+
+  padding:
+    75px 0 90px;
+}
+
+
+.about-copy {
+
+  max-width:
+    690px;
+}
+
+
+.about-copy h1 {
+
+  margin:
+    18px 0 0;
+
+  font:
+    700 clamp(
+      45px,
+      5.4vw,
+      73px
+    ) /.97
+    "Space Grotesk",
+    sans-serif;
+
+  letter-spacing:
+    -.055em;
+}
+
+
+.about-copy h1 span {
+
+  display:
+    block;
+
+  color:
+    var(--primary);
+}
+
+
+.about-copy p {
+
+  max-width:
+    640px;
+
+  margin:
+    24px 0 0;
+
+  color:
+    var(--text);
+
+  font-size:
+    15px;
+
+  line-height:
+    1.85;
+}
+
+
+.about-pills {
+
+  display:
+    flex;
+
+  flex-wrap:
+    wrap;
+
+  gap:
+    8px;
+
+  margin-top:
+    25px;
+}
+
+
+.about-pills span {
+
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  gap:
+    5px;
+
+  padding:
+    8px 9px;
+
+  border:
+    1px solid
+    var(--line);
+
+  border-radius:
+    8px;
+
+  color:
+    #697388;
+
+  background:
+    white;
+
+  font-size:
+    8px;
+
+  font-weight:
+    700;
+}
+
+
+/* =====================================================
+   ORBIT
+===================================================== */
+
+.about-orbit {
+
+  position:
+    relative;
+
+  width:
+    470px;
+
+  height:
+    470px;
+
+  margin:
+    0 auto;
+}
+
+
+.orbit-ring {
+
+  position:
+    absolute;
+
+  left:
+    50%;
+
+  top:
+    50%;
+
+  transform:
+    translate(-50%,-50%);
+
+  border:
+    1px solid
+    rgba(91,95,239,.15);
+
+  border-radius:
+    50%;
+}
+
+
+.ring-large {
+
+  width:
+    410px;
+
+  height:
+    410px;
+
+  border-color:
+    rgba(101,215,226,.15);
+}
+
+
+.ring-small {
+
+  width:
+    282px;
+
+  height:
+    282px;
+}
+
+
+/*
+=========================================================
+IMPORTANT ORBIT FIX
+
+Earlier version:
+Cards had fixed top/right/bottom/left positions,
+therefore they did not actually move.
+
+New version:
+orbit-track itself rotates continuously.
+The cards move around the circular path.
+Each card counter-rotates so its text stays readable.
+=========================================================
+*/
+
+.orbit-track {
+
+  position:
+    absolute;
+
+  inset:
+    0;
+
+  animation:
+    orbitRotate
+    18s
+    linear
+    infinite;
+}
+
+
+@keyframes orbitRotate {
+
+  from {
+    transform:
+      rotate(0deg);
+  }
+
+  to {
+    transform:
+      rotate(360deg);
+  }
+}
+
+
+/* ORBIT CARD */
+
+.orbit-card {
+
+  position:
+    absolute;
+
+  width:
+    94px;
+
+  min-height:
+    68px;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    3px;
+
+  border:
+    1px solid
+    #dae0e9;
+
+  border-radius:
+    15px;
+
+  background:
+    rgba(255,255,255,.96);
+
+  box-shadow:
+    0 15px 32px
+    rgba(31,38,71,.10);
+
+  color:
+    var(--primary);
+
+  animation:
+    orbitCounterRotate
+    18s
+    linear
+    infinite;
+}
+
+
+@keyframes orbitCounterRotate {
+
+  from {
+    transform:
+      rotate(0deg);
+  }
+
+  to {
+    transform:
+      rotate(-360deg);
+  }
+}
+
+
+.orbit-card strong {
+
+  color:
+    #364055;
+
+  font-size:
+    8px;
+}
+
+
+.orbit-card small {
+
+  color:
+    #939baa;
+
+  font-size:
+    6.5px;
+}
+
+
+/*
+=========================================================
+PRECISE POSITIONS
+
+The positions represent the four points of the orbit.
+=========================================================
+*/
+
+.orbit-top {
+
+  left:
+    50%;
+
+  top:
+    14px;
+
+  transform:
+    translateX(-50%);
+}
+
+
+.orbit-right {
+
+  right:
+    15px;
+
+  top:
+    50%;
+
+  transform:
+    translateY(-50%);
+}
+
+
+.orbit-bottom {
+
+  left:
+    50%;
+
+  bottom:
+    14px;
+
+  transform:
+    translateX(-50%);
+}
+
+
+.orbit-left {
+
+  left:
+    15px;
+
+  top:
+    50%;
+
+  transform:
+    translateY(-50%);
+}
+
+
+/* CENTER */
+
+.orbit-center {
+
+  position:
+    absolute;
+
+  z-index:
+    5;
+
+  left:
+    50%;
+
+  top:
+    50%;
+
+  transform:
+    translate(-50%,-50%);
+
+  width:
+    158px;
+
+  height:
+    158px;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    4px;
+
+  border:
+    1px solid
+    rgba(91,95,239,.18);
+
+  border-radius:
+    31px;
+
+  background:
+    rgba(255,255,255,.96);
+
+  box-shadow:
+    0 25px 62px
+    rgba(31,38,71,.13);
+}
+
+
+.orbit-center-icon {
+
+  width:
+    48px;
+
+  height:
+    48px;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  border-radius:
+    14px;
+
+  color:
+    var(--primary);
+
+  background:
+    #eff0ff;
+}
+
+
+.orbit-center strong {
+
+  font:
+    700 18px
+    "Space Grotesk",
+    sans-serif;
+}
+
+
+.orbit-center small {
+
+  color:
+    var(--muted);
+
+  font-size:
+    7px;
+}
+
+
+.orbit-center > span {
+
+  margin-top:
+    5px;
+
+  padding:
+    5px 7px;
+
+  border-radius:
+    7px;
+
+  color:
+    var(--green);
+
+  background:
+    #ebfaf4;
+
+  font-size:
+    5.5px;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    .08em;
+}
+
+
+/* =====================================================
+   CORE
+===================================================== */
+
+.about-core {
+
+  padding:
+    110px 0;
+
+  background:
+    white;
+}
+
+
+.about-heading {
+
+  max-width:
+    800px;
+
+  margin-bottom:
+    47px;
+}
+
+
+.about-heading h2 {
+
+  margin:
+    14px 0 0;
+
+  font:
+    700 clamp(
+      39px,
+      4.7vw,
+      59px
+    ) / 1
+    "Space Grotesk",
+    sans-serif;
+
+  letter-spacing:
+    -.045em;
+}
+
+
+.about-heading h2 span {
+
+  color:
+    var(--primary);
+}
+
+
+.about-cards {
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0,1fr)
+    );
+
+  gap:
+    15px;
+}
+
+
+.about-card {
+
+  min-height:
+    290px;
+
+  padding:
+    26px;
+
+  border:
+    1px solid
+    var(--line);
+
+  border-radius:
+    21px;
+
+  background:
+    white;
+
+  transition:
+    .25s ease;
+}
+
+
+.about-card:hover {
+
+  transform:
+    translateY(-5px);
+
+  box-shadow:
+    0 24px 70px
+    rgba(29,36,61,.08);
+}
+
+
+.about-card-icon {
+
+  width:
+    50px;
+
+  height:
+    50px;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  border-radius:
+    14px;
+
+  color:
+    var(--primary);
+
+  background:
+    #eff0ff;
+}
+
+
+.about-card > span {
+
+  display:
+    block;
+
+  margin-top:
+    21px;
+
+  color:
+    var(--primary);
+
+  font-size:
+    7px;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    .12em;
+}
+
+
+.about-card h3 {
+
+  margin:
+    7px 0 8px;
+
+  font:
+    700 21px
+    "Space Grotesk",
+    sans-serif;
+}
+
+
+.about-card p {
+
+  color:
+    var(--text);
+
+  font-size:
+    10.5px;
+
+  line-height:
+    1.8;
+}
+
+
+/* =====================================================
+   FINAL
+===================================================== */
+
+.about-final {
+
+  padding:
+    88px 0;
+
+  background:
+    #f4f6fb;
+}
+
+
+.about-final-box {
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    30px;
+
+  padding:
+    40px;
+
+  border-radius:
+    24px;
+
+  color:
+    white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0d1424,
+      #111b2f
+    );
+}
+
+
+.about-final-box .about-kicker {
+
+  color:
+    var(--aqua);
+}
+
+
+.about-final-box h2 {
+
+  max-width:
+    720px;
+
+  margin:
+    11px 0 0;
+
+  font:
+    700 clamp(
+      28px,
+      3.3vw,
+      44px
+    ) / 1.05
+    "Space Grotesk",
+    sans-serif;
+}
+
+
+.about-final-box h2 span {
+
+  color:
+    var(--aqua);
+}
+
+
+.about-final-button {
+
+  min-height:
+    46px;
+
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    8px;
+
+  padding:
+    0 18px;
+
+  border-radius:
+    12px;
+
+  color:
+    white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7074ff,
+      #5156e4
+    );
+
+  font-size:
+    11px;
+
+  font-weight:
+    800;
+
+  text-decoration:
+    none;
+
+  white-space:
+    nowrap;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1000px) {
+
+  .about-nav {
+
+    gap:
+      14px;
+  }
+
+
+  .about-nav a {
+
+    font-size:
+      10px;
+  }
+
+
+  .about-hero-layout {
+
+    gap:
+      35px;
+  }
+
+
+  .about-copy h1 {
+
+    font-size:
+      clamp(
+        43px,
+        5vw,
+        66px
+      );
+  }
+
+}
+
+
+@media (max-width: 850px) {
+
+  .about-hero-layout {
+
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .about-cards {
+
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0,1fr)
+      );
+  }
+
+
+  .about-final-box {
+
+    flex-direction:
+      column;
+
+    align-items:
+      flex-start;
+  }
+
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 760px) {
+
+  .about-header {
+
+    height:
+      68px;
+  }
+
+
+  .about-header-inner {
+
+    width:
+      calc(100% - 24px);
+  }
+
+
+  .about-brand-copy small {
+
+    display:
+      none;
+  }
+
+
+  .about-nav,
+  .about-header-button {
+
+    display:
+      none;
+  }
+
+
+  .about-header-inner::after {
+
+    content:
+      "☰";
+
+    width:
+      40px;
+
+    height:
+      40px;
+
+    display:
+      flex;
+
+    align-items:
+      center;
+
+    justify-content:
+      center;
+
+    border:
+      1px solid
+      var(--line);
+
+    border-radius:
+      11px;
+
+    color:
+      var(--dark);
+
+    background:
+      white;
+  }
+
+
+  .about-hero {
+
+    min-height:
+      auto;
+
+    padding-top:
+      68px;
+  }
+
+
+  .about-container {
+
+    width:
+      calc(100% - 30px);
+  }
+
+
+  .about-hero-layout {
+
+    width:
+      calc(100% - 30px);
+
+    padding:
+      48px 0 65px;
+  }
+
+
+  .about-copy h1 {
+
+    font-size:
+      clamp(
+        40px,
+        11.8vw,
+        59px
+      );
+  }
+
+
+  .about-copy p {
+
+    font-size:
+      14px;
+  }
+
+
+  .about-orbit {
+
+    width:
+      315px;
+
+    height:
+      315px;
+  }
+
+
+  .ring-large {
+
+    width:
+      288px;
+
+    height:
+      288px;
+  }
+
+
+  .ring-small {
+
+    width:
+      200px;
+
+    height:
+      200px;
+  }
+
+
+  .orbit-card {
+
+    width:
+      68px;
+
+    min-height:
+      53px;
+
+    border-radius:
+      11px;
+  }
+
+
+  .orbit-card strong {
+
+    font-size:
+      7px;
+  }
+
+
+  .orbit-card small {
+
+    font-size:
+      5.5px;
+  }
+
+
+  .orbit-top {
+
+    top:
+      3px;
+  }
+
+
+  .orbit-right {
+
+    right:
+      3px;
+  }
+
+
+  .orbit-bottom {
+
+    bottom:
+      3px;
+  }
+
+
+  .orbit-left {
+
+    left:
+      3px;
+  }
+
+
+  .orbit-center {
+
+    width:
+      110px;
+
+    height:
+      110px;
+
+    border-radius:
+      22px;
+  }
+
+
+  .orbit-center-icon {
+
+    width:
+      36px;
+
+    height:
+      36px;
+
+    border-radius:
+      11px;
+  }
+
+
+  .orbit-center strong {
+
+    font-size:
+      14px;
+  }
+
+
+  .orbit-center small {
+
+    font-size:
+      6px;
+  }
+
+
+  .about-core {
+
+    padding:
+      80px 0;
+  }
+
+
+  .about-heading h2 {
+
+    font-size:
+      clamp(
+        35px,
+        10.8vw,
+        49px
+      );
+  }
+
+
+  .about-cards {
+
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .about-final {
+
+    padding:
+      70px 0;
+  }
+
+
+  .about-final-box {
+
+    padding:
+      27px;
+
+    border-radius:
+      20px;
+  }
+
+
+  .about-final-button {
+
+    width:
+      100%;
+  }
+
+}
+
+
+/* =====================================================
+   REDUCED MOTION
+===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .orbit-track,
+  .orbit-card {
+
+    animation:
+      none;
+  }
+
+
+  .about-reveal {
+
+    opacity:
+      1;
+
+    transform:
+      none;
+  }
+
+}
