@@ -11,6 +11,7 @@ Full implementation of:
 =========================================================
 */
 
+const crypto = require("crypto");
 const db = require("../config/database");
 const biometricEngine = require("../utils/biometricEngine");
 const geofenceCalculator = require("../utils/geofenceCalculator");
@@ -322,17 +323,19 @@ function markQRAttendance(req, res) {
 
     db.prepare(`
       INSERT INTO attendance_records (
-        id, student_id, student_name, date, time, subject,
-        subject_code, method, status, geofence_verified, confidence, room
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'QR Backup', 'Present', ?, 'QR Validated', ?)
+        id, session_id, student_id, student_name, date, time, subject,
+        subject_code, lecture_name, method, status, geofence_verified, confidence, room
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'QR Backup', 'Present', ?, 'QR Validated', ?)
     `).run(
       recordId,
+      session.session_id,
       student.student_id,
       student.full_name,
       today,
       currentTime,
       session.subject_name,
       session.subject_code,
+      session.lecture_name || "Lecture Session",
       geofenceResult.withinGeofence ? 1 : 0,
       session.room
     );
@@ -340,21 +343,31 @@ function markQRAttendance(req, res) {
     // Increment session counter
     db.prepare("UPDATE attendance_sessions SET marked_count = marked_count + 1 WHERE session_id = ?").run(session.session_id);
 
+    // Update Student's Overall Attendance Percentage
+    const totalRecords = db.prepare("SELECT COUNT(*) as count FROM attendance_records WHERE UPPER(student_id) = UPPER(?)").get(targetStudentId).count;
+    const presentRecords = db.prepare("SELECT COUNT(*) as count FROM attendance_records WHERE UPPER(student_id) = UPPER(?) AND status = 'Present'").get(targetStudentId).count;
+    const updatedPct = totalRecords > 0 ? Number(((presentRecords / totalRecords) * 100).toFixed(1)) : 88.5;
+    db.prepare("UPDATE students SET overall_attendance = ? WHERE UPPER(student_id) = UPPER(?)").run(updatedPct, targetStudentId);
+
     return res.status(201).json({
       success: true,
-      message: `QR backup attendance recorded for ${session.subject_name}!`,
+      message: `QR backup attendance recorded for ${session.subject_name} (${session.lecture_name || 'Class'})!`,
       record: {
         id: recordId,
+        sessionId: session.session_id,
         studentId: student.student_id,
         studentName: student.full_name,
         subject: session.subject_name,
         subjectCode: session.subject_code,
+        lectureName: session.lecture_name || "Lecture Session",
+        teacherName: session.teacher_name,
         room: session.room,
         date: today,
         time: currentTime,
         method: "QR Backup",
         status: "Present",
-        confidence: "QR Validated"
+        confidence: "QR Validated",
+        overallAttendance: updatedPct
       }
     });
   } catch (error) {
@@ -381,11 +394,20 @@ function getActiveSessions(req, res) {
 }
 
 /**
- * Create a new attendance session (Teacher creates session with QR code)
+ * Create a new attendance session (Teacher creates session with unique QR code)
  */
 function createSession(req, res) {
   try {
-    const { subjectCode, subjectName, teacherId, teacherName, room, durationMinutes } = req.body;
+    const {
+      subjectCode,
+      subjectName,
+      lectureName,
+      classGroup,
+      teacherId,
+      teacherName,
+      room,
+      durationMinutes
+    } = req.body;
 
     if (!subjectCode || !subjectName) {
       return res.status(400).json({ success: false, error: "Subject code and name are required." });
@@ -393,22 +415,29 @@ function createSession(req, res) {
 
     const sessionId = `SES-${Date.now().toString().slice(-6)}`;
     const sessionCode = `AX-${Math.floor(1000 + Math.random() * 9000)}`;
-    const duration = durationMinutes || 20;
+    const token = crypto.randomBytes(16).toString("hex");
+    const duration = parseInt(durationMinutes, 10) || 15;
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + duration * 60 * 1000);
 
+    const safeLecture = lectureName || "Lecture 1";
+    const safeClass = classGroup || "CS-4A";
+
     db.prepare(`
       INSERT INTO attendance_sessions (
-        session_id, session_code, subject_code, subject_name,
-        teacher_id, teacher_name, room, start_time, expires_at,
-        status, total_enrolled, marked_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 45, 0)
+        session_id, session_code, token, subject_code, subject_name,
+        lecture_name, class_group, teacher_id, teacher_name, room,
+        start_time, expires_at, status, total_enrolled, marked_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 45, 0)
     `).run(
       sessionId,
       sessionCode,
+      token,
       subjectCode,
       subjectName,
+      safeLecture,
+      safeClass,
       teacherId || "TCH-2026-001",
       teacherName || "Dr. Rajesh Sharma",
       room || "Lab 304",
@@ -416,18 +445,40 @@ function createSession(req, res) {
       expiresAt.toISOString()
     );
 
+    const qrPayload = JSON.stringify({
+      app: "AttendX",
+      type: "ATTENDANCE_SESSION",
+      sessionId,
+      sessionCode,
+      token,
+      subjectCode,
+      subjectName,
+      lectureName: safeLecture,
+      classGroup: safeClass,
+      teacherName: teacherName || "Dr. Rajesh Sharma",
+      validUntil: expiresAt.toISOString()
+    });
+
     return res.status(201).json({
       success: true,
-      message: `Active attendance session created for ${subjectName} (${sessionCode}).`,
+      message: `Active attendance session created for ${subjectName} - ${safeLecture} (${sessionCode}).`,
       session: {
         sessionId,
         sessionCode,
+        token,
         subjectCode,
         subjectName,
+        lectureName: safeLecture,
+        classGroup: safeClass,
+        teacherId: teacherId || "TCH-2026-001",
+        teacherName: teacherName || "Dr. Rajesh Sharma",
         room: room || "Lab 304",
         startTime: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
-        qrPayload: JSON.stringify({ sessionCode, subjectCode, validUntil: expiresAt.toISOString() })
+        durationMinutes: duration,
+        status: "Active",
+        markedCount: 0,
+        qrPayload
       }
     });
   } catch (error) {
@@ -437,16 +488,168 @@ function createSession(req, res) {
 }
 
 /**
+ * Regenerate session token (Fresh QR token with new expiry)
+ */
+function regenerateSessionToken(req, res) {
+  try {
+    const { sessionId } = req.params;
+    const session = db.prepare("SELECT * FROM attendance_sessions WHERE session_id = ?").get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ success: false, error: "Attendance session not found." });
+    }
+
+    if (session.status !== "Active") {
+      return res.status(400).json({ success: false, error: "Cannot regenerate a closed session." });
+    }
+
+    const newCode = `AX-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newToken = crypto.randomBytes(16).toString("hex");
+    const duration = 15;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + duration * 60 * 1000);
+
+    db.prepare(`
+      UPDATE attendance_sessions
+      SET session_code = ?, token = ?, start_time = ?, expires_at = ?
+      WHERE session_id = ?
+    `).run(newCode, newToken, now.toISOString(), expiresAt.toISOString(), sessionId);
+
+    const qrPayload = JSON.stringify({
+      app: "AttendX",
+      type: "ATTENDANCE_SESSION",
+      sessionId,
+      sessionCode: newCode,
+      token: newToken,
+      subjectCode: session.subject_code,
+      subjectName: session.subject_name,
+      lectureName: session.lecture_name,
+      classGroup: session.class_group,
+      validUntil: expiresAt.toISOString()
+    });
+
+    return res.json({
+      success: true,
+      message: `QR code token regenerated with fresh 15-minute countdown for ${session.subject_name}.`,
+      session: {
+        sessionId,
+        sessionCode: newCode,
+        token: newToken,
+        subjectCode: session.subject_code,
+        subjectName: session.subject_name,
+        lectureName: session.lecture_name,
+        classGroup: session.class_group,
+        startTime: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        qrPayload
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Failed to regenerate session token" });
+  }
+}
+
+/**
+ * Get live attendees verified for a specific session
+ */
+function getSessionAttendees(req, res) {
+  try {
+    const { sessionId } = req.params;
+    const session = db.prepare("SELECT * FROM attendance_sessions WHERE session_id = ?").get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ success: false, error: "Session not found" });
+    }
+
+    const sessionDate = session.start_time.split("T")[0];
+    const attendees = db.prepare(`
+      SELECT * FROM attendance_records
+      WHERE session_id = ? OR (subject_code = ? AND date = ?)
+      ORDER BY time DESC
+    `).all(sessionId, session.subject_code, sessionDate);
+
+    return res.json({
+      success: true,
+      sessionId,
+      sessionCode: session.session_code,
+      markedCount: attendees.length,
+      attendees
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Failed to get session attendees" });
+  }
+}
+
+/**
  * Close attendance session
  */
 function closeSession(req, res) {
   try {
     const { sessionId } = req.params;
-    db.prepare("UPDATE attendance_sessions SET status = 'Closed' WHERE session_id = ?").run(sessionId);
+    db.prepare("UPDATE attendance_sessions SET status = 'Closed', token = NULL WHERE session_id = ?").run(sessionId);
 
-    return res.json({ success: true, message: `Session ${sessionId} closed.` });
+    return res.json({ success: true, message: `Attendance session ${sessionId} officially closed.` });
   } catch (error) {
     return res.status(500).json({ success: false, error: "Failed to close session" });
+  }
+}
+
+/**
+ * Admin manual attendance correction with reason and audit trail
+ */
+function correctAttendanceRecord(req, res) {
+  try {
+    const { recordId } = req.params;
+    const { status, reason, adminId } = req.body;
+
+    if (!["Present", "Absent", "Late"].includes(status)) {
+      return res.status(400).json({ success: false, error: "Status must be 'Present', 'Absent', or 'Late'." });
+    }
+
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, error: "A valid explanation/reason is required for institutional audit compliance." });
+    }
+
+    const record = db.prepare("SELECT * FROM attendance_records WHERE id = ?").get(recordId);
+    if (!record) {
+      return res.status(404).json({ success: false, error: "Attendance record not found." });
+    }
+
+    const auditor = adminId || (req.user ? req.user.identifier : "ADM-2026-001");
+
+    db.prepare(`
+      UPDATE attendance_records
+      SET status = ?, corrected_by = ?, correction_reason = ?, corrected_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(status, auditor, reason.trim(), recordId);
+
+    // Recalculate student attendance percentage
+    const totalRecords = db.prepare("SELECT COUNT(*) as count FROM attendance_records WHERE UPPER(student_id) = UPPER(?)").get(record.student_id).count;
+    const presentRecords = db.prepare("SELECT COUNT(*) as count FROM attendance_records WHERE UPPER(student_id) = UPPER(?) AND status = 'Present'").get(record.student_id).count;
+    const updatedPct = totalRecords > 0 ? Number(((presentRecords / totalRecords) * 100).toFixed(1)) : 88.5;
+    db.prepare("UPDATE students SET overall_attendance = ? WHERE UPPER(student_id) = UPPER(?)").run(updatedPct, record.student_id);
+
+    // Add audit notification for student
+    const notifId = `NOTIF-${Date.now().toString().slice(-5)}`;
+    db.prepare(`
+      INSERT INTO notifications (id, recipient_role, recipient_id, title, message, timestamp, read, type)
+      VALUES (?, 'student', ?, 'Attendance Record Adjusted by Admin', ?, 'Just now', 0, 'info')
+    `).run(
+      notifId,
+      record.student_id,
+      `Your attendance record for ${record.subject} on ${record.date} was manually adjusted to "${status}" by ${auditor}. Reason: ${reason.trim()}`
+    );
+
+    const updatedRecord = db.prepare("SELECT * FROM attendance_records WHERE id = ?").get(recordId);
+
+    return res.json({
+      success: true,
+      message: `Record ${recordId} updated to ${status}. Audit trail logged.`,
+      record: updatedRecord
+    });
+  } catch (error) {
+    console.error("correctAttendanceRecord error:", error);
+    return res.status(500).json({ success: false, error: "Failed to correct attendance record" });
   }
 }
 
@@ -582,8 +785,11 @@ module.exports = {
   markQRAttendance,
   getActiveSessions,
   createSession,
+  regenerateSessionToken,
+  getSessionAttendees,
   closeSession,
   getStudentAttendance,
   getAllAttendanceRecords,
+  correctAttendanceRecord,
   exportAttendanceCSV
 };

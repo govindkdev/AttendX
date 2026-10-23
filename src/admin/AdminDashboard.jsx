@@ -19,6 +19,7 @@ import { authService } from "../services/authService";
 import { attendanceService } from "../services/attendanceService";
 import { userService } from "../services/userService";
 import AdminFaceEnrollModal from "../components/attendance/AdminFaceEnrollModal";
+import AdminFaceAttendanceKiosk from "../components/attendance/AdminFaceAttendanceKiosk";
 import "../styles/dashboard.css";
 
 export default function AdminDashboard() {
@@ -35,11 +36,25 @@ export default function AdminDashboard() {
   const [geofence, setGeofence] = useState(userService.getCampusGeofence());
   const [feedbackMsg, setFeedbackMsg] = useState("");
 
-  // Modals for Issuing IDs & Face Enrollment
+  // Search & Filter states for Master Attendance Records
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterSubject, setFilterSubject] = useState("all");
+  const [filterMethod, setFilterMethod] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
+
+  // Modals for Issuing IDs & Face Enrollment & Manual Attendance Correction
   const [showIssueStudentModal, setShowIssueStudentModal] = useState(false);
   const [showIssueTeacherModal, setShowIssueTeacherModal] = useState(false);
   const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
   const [selectedStudentForEnroll, setSelectedStudentForEnroll] = useState(null);
+
+  // Manual Attendance Correction state
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [selectedRecordForCorrection, setSelectedRecordForCorrection] = useState(null);
+  const [correctionStatus, setCorrectionStatus] = useState("Present");
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
 
   // Issue Student Form
   const [newStudentForm, setNewStudentForm] = useState({
@@ -193,6 +208,65 @@ export default function AdminDashboard() {
     refreshData();
   };
 
+  // Manual Attendance Correction Handlers
+  const handleOpenCorrection = (record) => {
+    setSelectedRecordForCorrection(record);
+    setCorrectionStatus(record.status || "Present");
+    setCorrectionReason(record.correction_reason || "");
+    setShowCorrectionModal(true);
+  };
+
+  const handleSaveCorrection = async (e) => {
+    e.preventDefault();
+    if (!selectedRecordForCorrection) return;
+    if (!correctionReason.trim()) {
+      alert("Please provide an administrative reason for modifying this attendance record.");
+      return;
+    }
+
+    setCorrectionSubmitting(true);
+    const adminId = currentAdmin?.id || "ADM-2026-001";
+    const nowIso = new Date().toISOString();
+
+    try {
+      await fetch(`/api/attendance/records/${selectedRecordForCorrection.id}/correct`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: correctionStatus,
+          reason: correctionReason.trim(),
+          correctedBy: adminId
+        })
+      });
+    } catch (err) {
+      console.warn("Backend API offline, applying local correction state:", err);
+    }
+
+    // Update local prototype state
+    const state = JSON.parse(localStorage.getItem("attendx_prototype_state_v1") || "{}");
+    const history = state.attendanceHistory || [];
+    const updatedHistory = history.map((rec) => {
+      if (rec.id === selectedRecordForCorrection.id) {
+        return {
+          ...rec,
+          status: correctionStatus,
+          corrected_by: adminId,
+          correction_reason: correctionReason.trim(),
+          corrected_at: nowIso
+        };
+      }
+      return rec;
+    });
+
+    state.attendanceHistory = updatedHistory;
+    localStorage.setItem("attendx_prototype_state_v1", JSON.stringify(state));
+
+    setAttendanceLogs(updatedHistory);
+    setCorrectionSubmitting(false);
+    setShowCorrectionModal(false);
+    showBannerMessage(`Record #${selectedRecordForCorrection.id} corrected to ${correctionStatus}. Audit log saved.`);
+  };
+
   return (
     <div className="attendx-dashboard-layout">
       {/* ===================================================
@@ -270,6 +344,17 @@ export default function AdminDashboard() {
           </button>
 
           <button
+            className={`sidebar-nav-item ${activeTab === "face-kiosk" ? "active" : ""}`}
+            onClick={() => { setActiveTab("face-kiosk"); setSidebarOpen(false); }}
+          >
+            <span className="nav-icon">🤖</span>
+            <span>Face AI Attendance Station</span>
+            <span className="nav-badge" style={{ background: "var(--attendx-indigo)", color: "#fff" }}>
+              Live Kiosk
+            </span>
+          </button>
+
+          <button
             className={`sidebar-nav-item ${activeTab === "sessions" ? "active" : ""}`}
             onClick={() => { setActiveTab("sessions"); setSidebarOpen(false); }}
           >
@@ -326,11 +411,12 @@ export default function AdminDashboard() {
                 {activeTab === "dashboard" && "Institutional Admin Portal"}
                 {activeTab === "students" && "Student Identity Management"}
                 {activeTab === "face-enrollment" && "Biometric Face Enrollment Console"}
+                {activeTab === "face-kiosk" && "Face Recognition Attendance Station"}
                 {activeTab === "teachers" && "Teacher Identity Management"}
                 {activeTab === "approvals" && "Registration Review & Approvals"}
                 {activeTab === "sessions" && "Campus Attendance Sessions"}
                 {activeTab === "geofence" && "Campus Perimeter & Geo-Fencing"}
-                {activeTab === "reports" && "Institute Audit Reports & Analytics"}
+                {activeTab === "reports" && "Institute Attendance Records & Master Audit"}
                 {activeTab === "settings" && "System & Authority Configuration"}
               </h1>
               <p>AttendX Enterprise Infrastructure • Central Authority Console</p>
@@ -394,6 +480,14 @@ export default function AdminDashboard() {
                     <button className="btn-secondary" onClick={() => setShowIssueTeacherModal(true)}>
                       <span>+</span>
                       <span>Issue Teacher ID</span>
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ background: "rgba(255, 255, 255, 0.15)", color: "#FFFFFF", borderColor: "rgba(255, 255, 255, 0.3)" }}
+                      onClick={() => setActiveTab("face-kiosk")}
+                    >
+                      <span>🤖</span>
+                      <span>Launch Face AI Kiosk</span>
                     </button>
                   </div>
                 </div>
@@ -991,52 +1085,246 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB 7: REPORTS */}
-          {activeTab === "reports" && (
-            <div className="dashboard-card">
-              <div className="card-header-flex">
-                <div>
-                  <h3>Institute Audit Reports & Analytics</h3>
-                  <p>Comprehensive attendance logs for all academic departments</p>
-                </div>
-                <button
-                  className="btn-primary"
-                  onClick={() => attendanceService.exportToCSV(attendanceLogs, "AttendX_Master_Institutional_Audit.csv")}
-                >
-                  📥 Export Master Audit CSV
-                </button>
-              </div>
-
-              <div className="attendx-table-wrapper">
-                <table className="attendx-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Student ID</th>
-                      <th>Student Name</th>
-                      <th>Date & Time</th>
-                      <th>Subject</th>
-                      <th>Method</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendanceLogs.slice(0, 15).map((log) => (
-                      <tr key={log.id}>
-                        <td><code>{log.id}</code></td>
-                        <td><code>{log.studentId}</code></td>
-                        <td>{log.studentName}</td>
-                        <td>{log.date} {log.time}</td>
-                        <td>{log.subject}</td>
-                        <td><span className="method-tag">{log.method}</span></td>
-                        <td><span className={`status-pill ${log.status.toLowerCase()}`}>{log.status}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {/* TAB: FACE AI KIOSK */}
+          {activeTab === "face-kiosk" && (
+            <AdminFaceAttendanceKiosk onAttendanceUpdated={refreshData} />
           )}
+
+          {/* TAB 7: REPORTS & MASTER ATTENDANCE AUDIT */}
+          {activeTab === "reports" && (() => {
+            const query = searchQuery.trim().toLowerCase();
+            const filteredLogs = attendanceLogs.filter((log) => {
+              const matchesSearch =
+                !query ||
+                (log.studentName && log.studentName.toLowerCase().includes(query)) ||
+                (log.studentId && log.studentId.toLowerCase().includes(query)) ||
+                (log.subject && log.subject.toLowerCase().includes(query)) ||
+                (log.subjectCode && log.subjectCode.toLowerCase().includes(query));
+
+              const matchesSubject = filterSubject === "all" || log.subjectCode === filterSubject || (log.subject && log.subject.includes(filterSubject));
+              const matchesMethod = filterMethod === "all" || (log.method && log.method.toLowerCase().includes(filterMethod.toLowerCase()));
+              const matchesStatus = filterStatus === "all" || (log.status && log.status.toLowerCase() === filterStatus.toLowerCase());
+              const matchesDate = !filterDate || log.date === filterDate;
+
+              return matchesSearch && matchesSubject && matchesMethod && matchesStatus && matchesDate;
+            });
+
+            const presentCount = attendanceLogs.filter((l) => (l.status || "").toLowerCase() === "present").length;
+            const absentCount = attendanceLogs.filter((l) => (l.status || "").toLowerCase() === "absent").length;
+            const lateCount = attendanceLogs.filter((l) => (l.status || "").toLowerCase() === "late").length;
+            const faceCount = attendanceLogs.filter((l) => (l.method || "").toLowerCase().includes("face") || (l.method || "").toLowerCase().includes("biometric")).length;
+            const qrCount = attendanceLogs.filter((l) => (l.method || "").toLowerCase().includes("qr")).length;
+
+            return (
+              <div className="dashboard-card">
+                <div className="card-header-flex">
+                  <div>
+                    <h3>Institute Attendance Records & Master Audit</h3>
+                    <p>Cross-department attendance ledger with role-based audit trail and manual correction</p>
+                  </div>
+                  <button
+                    className="btn-primary"
+                    onClick={() => attendanceService.exportToCSV(filteredLogs, "AttendX_Master_Institutional_Audit.csv")}
+                  >
+                    📥 Export Filtered Audit CSV
+                  </button>
+                </div>
+
+                {/* Metrics ribbon */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                  gap: 12,
+                  marginBottom: 20
+                }}>
+                  <div style={{ padding: "12px 14px", background: "var(--attendx-surface-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-text-muted)" }}>TOTAL RECORDS</div>
+                    <div style={{ fontSize: 20, fontWeight: 800 }}>{attendanceLogs.length}</div>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "var(--attendx-success-bg)", borderRadius: "var(--radius-md)", border: "1px solid rgba(18, 155, 103, 0.2)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-success)" }}>PRESENT</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--attendx-success)" }}>{presentCount}</div>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "var(--attendx-warning-bg)", borderRadius: "var(--radius-md)", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-warning)" }}>LATE</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--attendx-warning)" }}>{lateCount}</div>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "var(--attendx-error-bg)", borderRadius: "var(--radius-md)", border: "1px solid rgba(235, 94, 85, 0.2)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-error)" }}>ABSENT</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--attendx-error)" }}>{absentCount}</div>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "rgba(101, 215, 226, 0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(101, 215, 226, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-aqua)" }}>FACE BIOMETRIC</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--attendx-aqua)" }}>{faceCount}</div>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "rgba(81, 86, 228, 0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(81, 86, 228, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "var(--attendx-indigo)" }}>QR CODE SCAN</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--attendx-indigo)" }}>{qrCount}</div>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                  padding: 16,
+                  background: "var(--attendx-surface-subtle)",
+                  borderRadius: "var(--radius-lg)",
+                  border: "1px solid var(--attendx-border)",
+                  marginBottom: 20
+                }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Search Student / Subject</label>
+                    <input
+                      type="text"
+                      placeholder="Name, ID or Subject..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Filter by Subject</label>
+                    <select
+                      value={filterSubject}
+                      onChange={(e) => setFilterSubject(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
+                    >
+                      <option value="all">All Subjects</option>
+                      <option value="CS401">CS401 - Data Structures</option>
+                      <option value="CS402">CS402 - Machine Learning & AI</option>
+                      <option value="CS403">CS403 - Cloud Computing</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Verification Method</label>
+                    <select
+                      value={filterMethod}
+                      onChange={(e) => setFilterMethod(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
+                    >
+                      <option value="all">All Methods</option>
+                      <option value="Face">Face Biometrics AI</option>
+                      <option value="QR">Lecture QR Code</option>
+                      <option value="Manual">Manual Override</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Attendance Status</label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="Present">Present Only</option>
+                      <option value="Late">Late Only</option>
+                      <option value="Absent">Absent Only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Filter Date</label>
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Table of Records */}
+                <div className="attendx-table-wrapper">
+                  <table className="attendx-table">
+                    <thead>
+                      <tr>
+                        <th>Record ID</th>
+                        <th>Student</th>
+                        <th>Subject & Lecture</th>
+                        <th>Timestamp</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Audit Trail / Correction</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLogs.length > 0 ? (
+                        filteredLogs.map((log) => (
+                          <tr key={log.id}>
+                            <td><code>#{log.id}</code></td>
+                            <td>
+                              <strong>{log.studentName}</strong>
+                              <div style={{ fontSize: 11, color: "var(--attendx-text-muted)" }}>{log.studentId}</div>
+                            </td>
+                            <td>
+                              <div><strong>{log.subject}</strong></div>
+                              {log.lecture_name && (
+                                <div style={{ fontSize: 11, color: "var(--attendx-indigo)" }}>{log.lecture_name}</div>
+                              )}
+                            </td>
+                            <td>
+                              <div>{log.date}</div>
+                              <div style={{ fontSize: 11, color: "var(--attendx-text-muted)" }}>{log.time || "N/A"}</div>
+                            </td>
+                            <td>
+                              <span className="method-tag">
+                                {log.method}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`status-pill ${log.status ? log.status.toLowerCase() : "present"}`}>
+                                {log.status || "Present"}
+                              </span>
+                            </td>
+                            <td>
+                              {log.corrected_by ? (
+                                <div style={{
+                                  fontSize: 11,
+                                  background: "rgba(245, 158, 11, 0.1)",
+                                  color: "var(--attendx-warning)",
+                                  padding: "4px 8px",
+                                  borderRadius: 4,
+                                  border: "1px solid rgba(245, 158, 11, 0.25)"
+                                }}>
+                                  <strong>✏️ Adjusted by {log.corrected_by}</strong>
+                                  <div>"{log.correction_reason || "Administrative Correction"}"</div>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: 11, color: "var(--attendx-text-muted)" }}>
+                                  ✓ Verified by System
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                className="btn-secondary"
+                                style={{ padding: "4px 10px", fontSize: 11 }}
+                                onClick={() => handleOpenCorrection(log)}
+                              >
+                                Edit / Correct
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="8" style={{ textAlign: "center", padding: 32, color: "var(--attendx-text-muted)" }}>
+                            No attendance records match the current search and filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TAB 8: SETTINGS */}
           {activeTab === "settings" && (
@@ -1254,6 +1542,105 @@ export default function AdminDashboard() {
           showBannerMessage(`Biometric face registered for ${updatedStudent.fullName}.`);
         }}
       />
+
+      {/* Modal: Manual Attendance Correction with Audit Trail */}
+      {showCorrectionModal && selectedRecordForCorrection && (
+        <div className="attendx-modal-backdrop" onClick={() => setShowCorrectionModal(false)}>
+          <div className="attendx-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <h3>Authorize Attendance Correction</h3>
+              <button className="modal-close-btn" onClick={() => setShowCorrectionModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSaveCorrection} className="modal-body">
+              <div style={{
+                padding: "12px 16px",
+                background: "var(--attendx-surface-subtle)",
+                borderRadius: "var(--radius-md)",
+                marginBottom: 16,
+                fontSize: 13
+              }}>
+                <div><span style={{ color: "var(--attendx-text-muted)" }}>Record ID:</span> <b>#{selectedRecordForCorrection.id}</b></div>
+                <div><span style={{ color: "var(--attendx-text-muted)" }}>Student:</span> <b>{selectedRecordForCorrection.studentName}</b> ({selectedRecordForCorrection.studentId})</div>
+                <div><span style={{ color: "var(--attendx-text-muted)" }}>Subject:</span> <b>{selectedRecordForCorrection.subject}</b></div>
+                <div><span style={{ color: "var(--attendx-text-muted)" }}>Date & Time:</span> {selectedRecordForCorrection.date} {selectedRecordForCorrection.time}</div>
+                <div><span style={{ color: "var(--attendx-text-muted)" }}>Current Status:</span> <b style={{ textTransform: "uppercase" }}>{selectedRecordForCorrection.status}</b></div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Adjust Status To
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  {["Present", "Late", "Absent"].map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setCorrectionStatus(st)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        background: correctionStatus === st
+                          ? st === "Present" ? "var(--attendx-success)" : st === "Late" ? "var(--attendx-warning)" : "var(--attendx-error)"
+                          : "#fff",
+                        color: correctionStatus === st ? "#fff" : "var(--attendx-text-primary)",
+                        borderColor: correctionStatus === st ? "transparent" : "var(--attendx-border)"
+                      }}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Mandatory Administrative Justification / Reason <span style={{ color: "var(--attendx-error)" }}>*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="e.g. Medical certificate verified by Academic Dean, kiosk optical camera lighting issue, sanctioned campus sports event..."
+                  value={correctionReason}
+                  onChange={(e) => setCorrectionReason(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--attendx-border)",
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    resize: "vertical"
+                  }}
+                />
+                <small style={{ color: "var(--attendx-text-muted)", fontSize: 11, marginTop: 4, display: "block" }}>
+                  This reason will be permanently stamped in the institutional audit log with your Admin ID ({currentAdmin?.id || "ADM-2026-001"}).
+                </small>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowCorrectionModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={correctionSubmitting}
+                >
+                  {correctionSubmitting ? "Saving Audit Trail..." : "Save Correction & Log Audit"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

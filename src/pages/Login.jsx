@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { authService } from "../services/authService";
 
 /*
@@ -180,6 +180,26 @@ export default function Login() {
 
   const [message, setMessage] =
     useState("");
+
+  /* Read query params on load (e.g. from registration redirect) */
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const paramRole = params.get("role");
+      const paramRegistered = params.get("registered");
+      const paramId = params.get("id");
+
+      if (paramRole && ["student", "teacher", "admin"].includes(paramRole)) {
+        setRole(paramRole);
+      }
+      if (paramId) {
+        setEmail(paramId);
+      }
+      if (paramRegistered) {
+        setMessage("✓ Account registered and activated! Please enter your password to log in.");
+      }
+    } catch (e) {}
+  }, []);
 
   /* =====================================================
      ROLE DATA

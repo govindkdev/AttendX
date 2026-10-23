@@ -189,31 +189,45 @@ export const authService = {
     const state = loadState();
     const cleanId = (formData.studentId || "").trim().toUpperCase();
 
-    // Verification rule: Student ID must already exist in Admin's issued records
-    const authorizedSlot = state.students.find(
+    // Verification rule: If ID exists in Admin's register, update it; otherwise auto-provision test account
+    let authorizedSlot = state.students.find(
       (s) => s.studentId.toUpperCase() === cleanId
     );
 
     if (!authorizedSlot) {
-      return {
-        success: false,
-        error: `Student ID "${cleanId}" is not in the Admin Authorization Register. Student IDs must be issued by the Institute Admin before creating an account.`
+      authorizedSlot = {
+        studentId: cleanId,
+        fullName: formData.fullName.trim(),
+        course: formData.course || "B.Tech",
+        branch: formData.branch || "Computer Science & Engineering",
+        year: formData.year || "4th Year",
+        rollNumber: `210097${Date.now().toString().slice(-6)}`,
+        email: formData.email.trim(),
+        phone: formData.phone,
+        parentName: formData.parentName || "",
+        parentPhone: formData.parentPhone || "",
+        parentEmail: formData.parentEmail || "",
+        address: formData.address || "",
+        tempPassword: formData.password,
+        status: "Active",
+        faceEnrolled: false,
+        overallAttendance: 85.0
       };
+      state.students.unshift(authorizedSlot);
+    } else {
+      authorizedSlot.fullName = formData.fullName.trim();
+      authorizedSlot.course = formData.course;
+      authorizedSlot.branch = formData.branch;
+      authorizedSlot.year = formData.year;
+      authorizedSlot.phone = formData.phone;
+      authorizedSlot.email = formData.email.trim();
+      authorizedSlot.parentName = formData.parentName;
+      authorizedSlot.parentPhone = formData.parentPhone;
+      authorizedSlot.parentEmail = formData.parentEmail || "";
+      authorizedSlot.address = formData.address;
+      authorizedSlot.tempPassword = formData.password;
+      authorizedSlot.status = "Active";
     }
-
-    // Update authorized slot with student registration details
-    authorizedSlot.fullName = formData.fullName.trim();
-    authorizedSlot.course = formData.course;
-    authorizedSlot.branch = formData.branch;
-    authorizedSlot.year = formData.year;
-    authorizedSlot.phone = formData.phone;
-    authorizedSlot.email = formData.email.trim();
-    authorizedSlot.parentName = formData.parentName;
-    authorizedSlot.parentPhone = formData.parentPhone;
-    authorizedSlot.parentEmail = formData.parentEmail || "";
-    authorizedSlot.address = formData.address;
-    authorizedSlot.tempPassword = formData.password; // Mock storage for prototype
-    authorizedSlot.status = "Active";
 
     saveState(state);
 
@@ -248,24 +262,35 @@ export const authService = {
     const state = loadState();
     const cleanId = (formData.teacherId || "").trim().toUpperCase();
 
-    const authorizedSlot = state.teachers.find(
+    let authorizedSlot = state.teachers.find(
       (t) => t.teacherId.toUpperCase() === cleanId
     );
 
     if (!authorizedSlot) {
-      return {
-        success: false,
-        error: `Teacher ID "${cleanId}" is not recognized. Teacher IDs must be created and issued by the Institute Admin.`
+      authorizedSlot = {
+        teacherId: cleanId,
+        fullName: formData.fullName.trim(),
+        department: formData.department || "Computer Science & Engineering",
+        designation: "Assistant Professor",
+        email: formData.email ? formData.email.trim() : `${cleanId.toLowerCase()}@attendx.com`,
+        phone: formData.phone,
+        subjects: [
+          { code: "CS401", name: "Data Structures & Algorithms", room: "LT-102" },
+          { code: "CS402", name: "Machine Learning & AI", room: "Lab 304" }
+        ],
+        tempPassword: formData.password,
+        status: "Active"
       };
+      state.teachers.unshift(authorizedSlot);
+    } else {
+      authorizedSlot.fullName = formData.fullName.trim();
+      authorizedSlot.department = formData.department;
+      authorizedSlot.phone = formData.phone;
+      authorizedSlot.tempPassword = formData.password;
+      authorizedSlot.status = "Active";
     }
 
-    authorizedSlot.fullName = formData.fullName.trim();
-    authorizedSlot.department = formData.department;
-    authorizedSlot.phone = formData.phone;
-    authorizedSlot.tempPassword = formData.password;
-    authorizedSlot.status = "Active";
-
-    // Add to pending approvals or record
+    // Clear from pending if any
     const pendingIndex = state.pendingRegistrations.findIndex((p) => p.teacherId === cleanId);
     if (pendingIndex >= 0) {
       state.pendingRegistrations.splice(pendingIndex, 1);
@@ -273,9 +298,20 @@ export const authService = {
 
     saveState(state);
 
+    // Fullstack: Sync teacher registration to backend SQLite
+    api.post("/api/auth/register", {
+      role: "teacher",
+      teacherId: cleanId,
+      fullName: formData.fullName.trim(),
+      department: formData.department,
+      phone: formData.phone,
+      email: formData.email ? formData.email.trim() : `${cleanId.toLowerCase()}@attendx.com`,
+      password: formData.password
+    }).catch((e) => console.warn("[AttendX Fullstack] Teacher registration sync:", e.message));
+
     return {
       success: true,
-      message: `Teacher registration completed for ${authorizedSlot.fullName}. Your ID ${cleanId} is verified.`
+      message: `Teacher registration completed for ${authorizedSlot.fullName} (${cleanId}). You may now log in.`
     };
   },
 

@@ -33,13 +33,24 @@ export default function AdminFaceEnrollModal({
     setPermissionError("");
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
-        });
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+          });
+        } catch (constraintErr) {
+          // Fallback for laptop webcams without facingMode constraint
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
+          try {
+            await videoRef.current.play();
+          } catch (e) {
+            console.warn("Enrollment camera play:", e);
+          }
         }
         setStreamActive(true);
       } else {
@@ -188,9 +199,22 @@ export default function AdminFaceEnrollModal({
           <div className="camera-scanner-frame" style={{ height: 280, position: "relative" }}>
             {step === "camera" ? (
               <>
-                {streamActive ? (
-                  <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: streamActive ? "block" : "none"
+                  }}
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) videoRef.current.play().catch(() => {});
+                  }}
+                />
+                {!streamActive && (
                   <div style={{ textAlign: "center", color: "#65D7E2", padding: 20 }}>
                     <div style={{ fontSize: 44, marginBottom: 8 }}>📷</div>
                     <strong>Admin Enrollment Camera</strong>

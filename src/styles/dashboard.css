@@ -825,3 +825,134 @@ Colors:
     display: none;
   }
 }
+
+/* =======================================================
+   MOBILE-FIRST BOTTOM NAVIGATION & TOUCH ENHANCEMENTS
+   ======================================================= */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding-bottom: 96px !important;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--attendx-border);
+    box-shadow: 0 -4px 24px rgba(13, 23, 48, 0.08);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px)) 8px;
+  }
+
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--attendx-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    gap: 3px;
+    cursor: pointer;
+    min-height: 48px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+  }
+
+  .mobile-nav-btn .mobile-nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .mobile-nav-btn.active {
+    color: var(--attendx-indigo);
+  }
+
+  .mobile-nav-btn:active {
+    transform: scale(0.95);
+    background: rgba(81, 86, 228, 0.05);
+  }
+
+  /* Floating Scan Action Button for Mobile Thumb Zone */
+  .mobile-nav-scan-cta {
+    position: relative;
+    top: -14px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5156E4 0%, #3B40B5 100%);
+    border: 4px solid #FFFFFF;
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(81, 86, 228, 0.45);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    flex-shrink: 0;
+  }
+
+  .mobile-nav-scan-cta:active {
+    transform: scale(0.92) translateY(2px);
+    box-shadow: 0 4px 12px rgba(81, 86, 228, 0.35);
+  }
+
+  .mobile-nav-scan-cta .scan-icon {
+    font-size: 20px;
+    line-height: 1;
+    margin-bottom: 1px;
+  }
+
+  .mobile-nav-scan-cta .scan-text {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* Touch-optimized Buttons & Inputs */
+  .btn-primary, .btn-secondary {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .attendx-table-wrapper {
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+  }
+
+  /* Mobile Modals (Optimized fit) */
+  .attendx-modal {
+    width: 94% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    margin: 10px auto !important;
+    padding: 16px !important;
+  }
+
+  .banner-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .banner-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

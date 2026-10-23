@@ -106,8 +106,11 @@ function initDatabase() {
     CREATE TABLE IF NOT EXISTS attendance_sessions (
       session_id TEXT PRIMARY KEY,
       session_code TEXT NOT NULL,
+      token TEXT,
       subject_code TEXT NOT NULL,
       subject_name TEXT NOT NULL,
+      lecture_name TEXT DEFAULT 'Lecture 1',
+      class_group TEXT DEFAULT 'CS-4A',
       teacher_id TEXT NOT NULL,
       teacher_name TEXT NOT NULL,
       room TEXT NOT NULL,
@@ -121,17 +124,22 @@ function initDatabase() {
     -- ATTENDANCE RECORDS TABLE
     CREATE TABLE IF NOT EXISTS attendance_records (
       id TEXT PRIMARY KEY,
+      session_id TEXT,
       student_id TEXT NOT NULL,
       student_name TEXT NOT NULL,
       date TEXT NOT NULL, -- YYYY-MM-DD
       time TEXT NOT NULL, -- HH:MM AM/PM
       subject TEXT NOT NULL,
       subject_code TEXT NOT NULL,
+      lecture_name TEXT,
       method TEXT NOT NULL, -- 'Face AI' | 'QR Backup' | 'Manual Record'
       status TEXT NOT NULL, -- 'Present' | 'Late' | 'Absent'
       geofence_verified INTEGER DEFAULT 1,
       confidence TEXT DEFAULT '99.4%',
       room TEXT,
+      corrected_by TEXT,
+      correction_reason TEXT,
+      corrected_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (student_id) REFERENCES students(student_id)
     );
@@ -186,6 +194,23 @@ function initDatabase() {
       strict_mode INTEGER DEFAULT 1
     );
   `);
+
+  // Migrate existing tables if columns are missing
+  try {
+    const sessionCols = db.pragma("table_info(attendance_sessions)").map((c) => c.name);
+    if (!sessionCols.includes("token")) db.exec("ALTER TABLE attendance_sessions ADD COLUMN token TEXT");
+    if (!sessionCols.includes("lecture_name")) db.exec("ALTER TABLE attendance_sessions ADD COLUMN lecture_name TEXT DEFAULT 'Lecture 1'");
+    if (!sessionCols.includes("class_group")) db.exec("ALTER TABLE attendance_sessions ADD COLUMN class_group TEXT DEFAULT 'CS-4A'");
+
+    const recordCols = db.pragma("table_info(attendance_records)").map((c) => c.name);
+    if (!recordCols.includes("session_id")) db.exec("ALTER TABLE attendance_records ADD COLUMN session_id TEXT");
+    if (!recordCols.includes("lecture_name")) db.exec("ALTER TABLE attendance_records ADD COLUMN lecture_name TEXT");
+    if (!recordCols.includes("corrected_by")) db.exec("ALTER TABLE attendance_records ADD COLUMN corrected_by TEXT");
+    if (!recordCols.includes("correction_reason")) db.exec("ALTER TABLE attendance_records ADD COLUMN correction_reason TEXT");
+    if (!recordCols.includes("corrected_at")) db.exec("ALTER TABLE attendance_records ADD COLUMN corrected_at DATETIME");
+  } catch (err) {
+    console.warn("Schema migration notice:", err.message);
+  }
 
   seedInitialData();
 }

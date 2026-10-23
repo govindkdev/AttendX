@@ -347,7 +347,7 @@ function CreateAccount() {
     setMessageType("success");
 
     setTimeout(() => {
-      window.location.href = "/verify-account?role=student";
+      window.location.href = `/login?role=student&registered=true&id=${encodeURIComponent(form.studentId)}`;
     }, 1200);
   };
 
@@ -398,7 +398,7 @@ function CreateAccount() {
     setMessageType("success");
 
     setTimeout(() => {
-      window.location.href = "/verify-account?role=teacher";
+      window.location.href = `/login?role=teacher&registered=true&id=${encodeURIComponent(form.teacherId)}`;
     }, 1200);
   };
 

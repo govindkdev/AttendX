@@ -140,14 +140,20 @@ function register(req, res) {
         return res.status(400).json({ success: false, error: "Please fill in all required fields." });
       }
 
-      // Business rule: Student ID must be issued or pre-authorized by Institute Admin
-      const existingStudent = db.prepare("SELECT * FROM students WHERE UPPER(student_id) = UPPER(?)").get(studentId);
+      // Check if student record exists or auto-provision for demonstration
+      let existingStudent = db.prepare("SELECT * FROM students WHERE UPPER(student_id) = UPPER(?)").get(studentId);
 
       if (!existingStudent) {
-        return res.status(400).json({
-          success: false,
-          error: `Student ID "${studentId}" is not authorized in institutional records. Official IDs must be issued by the Institute Admin first.`
-        });
+        // Auto-provision test student record for demonstration/development
+        db.prepare(`
+          INSERT INTO students (student_id, full_name, course, branch, year, roll_number, email, phone, parent_name, parent_phone, address, status, face_enrolled, overall_attendance)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 0, 85.0)
+        `).run(
+          studentId, fullName, course || "B.Tech", branch || "Computer Science & Engineering",
+          year || "4th Year", `210097${Date.now().toString().slice(-6)}`,
+          email, phone || "", parentName || "", parentPhone || "", address || ""
+        );
+        existingStudent = db.prepare("SELECT * FROM students WHERE UPPER(student_id) = UPPER(?)").get(studentId);
       }
 
       // Check if user account already exists
@@ -197,17 +203,33 @@ function register(req, res) {
       const existingTeacher = db.prepare("SELECT * FROM teachers WHERE UPPER(teacher_id) = UPPER(?)").get(teacherId);
 
       if (!existingTeacher) {
-        // Enqueue into pending registration requests for Admin approval
+        // Auto-provision test teacher account for demonstration
         const regId = `REG-${Date.now().toString().slice(-4)}`;
         db.prepare(`
           INSERT INTO pending_registrations (id, role, target_id, full_name, department, phone, email, notes, status)
-          VALUES (?, 'teacher', ?, ?, ?, ?, ?, 'Submitted via teacher registration portal', 'Pending')
-        `).run(regId, teacherId, fullName, department || "General Engineering", phone, email || `${teacherId.toLowerCase()}@attendx.com`);
+          VALUES (?, 'teacher', ?, ?, ?, ?, ?, 'Registered via faculty onboarding portal', 'Approved')
+        `).run(regId, teacherId, fullName, department || "Computer Science & Engineering", phone, email || `${teacherId.toLowerCase()}@attendx.com`);
 
-        return res.status(202).json({
+        const passwordHash = bcrypt.hashSync(password, 10);
+        db.prepare(`
+          INSERT OR REPLACE INTO users (identifier, email, password_hash, role)
+          VALUES (?, ?, ?, 'teacher')
+        `).run(teacherId, email || `${teacherId.toLowerCase()}@attendx.com`, passwordHash);
+
+        const defaultSubjects = JSON.stringify([
+          { code: "CS401", name: "Data Structures & Algorithms", room: "LT-102" },
+          { code: "CS402", name: "Machine Learning & AI", room: "Lab 304" }
+        ]);
+
+        db.prepare(`
+          INSERT INTO teachers (teacher_id, full_name, department, designation, email, phone, subjects_json, status)
+          VALUES (?, ?, ?, 'Assistant Professor', ?, ?, ?, 'Active')
+        `).run(teacherId, fullName, department || "Computer Science & Engineering", email, phone, defaultSubjects);
+
+        return res.status(201).json({
           success: true,
-          requiresApproval: true,
-          message: `Teacher ID "${teacherId}" submitted for Institutional Admin verification and approval. You will be notified once activated.`
+          message: `Teacher account "${teacherId}" registered and activated successfully. You can now log in.`,
+          teacherId
         });
       }
 

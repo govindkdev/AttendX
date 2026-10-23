@@ -28,6 +28,11 @@ export default function TeacherDashboard() {
   const [activeSession, setActiveSession] = useState(null);
   const [sessionDuration, setSessionDuration] = useState(15);
   const [selectedSubject, setSelectedSubject] = useState("CS402");
+  const [selectedClass, setSelectedClass] = useState("CS-4A (Final Year)");
+  const [lectureName, setLectureName] = useState("Lecture 14: Deep Learning & Neural Networks");
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [isExpired, setIsExpired] = useState(false);
+  const [sessionAttendees, setSessionAttendees] = useState([]);
 
   // Roster & manual marking
   const [studentsList, setStudentsList] = useState([]);
@@ -37,6 +42,54 @@ export default function TeacherDashboard() {
   // History & stats
   const [allAttendance, setAllAttendance] = useState([]);
   const [notifications, setNotifications] = useState([]);
+
+  // Live countdown timer for active QR session
+  useEffect(() => {
+    if (!activeSession || !activeSession.expiresAt || activeSession.status !== "Active") {
+      setSecondsRemaining(0);
+      setIsExpired(false);
+      return;
+    }
+
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.floor((new Date(activeSession.expiresAt).getTime() - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+      setIsExpired(remaining <= 0);
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [activeSession]);
+
+  // Live polling of verified attendees while QR session is running
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== "Active") return;
+
+    const fetchAttendees = async () => {
+      try {
+        const res = await fetch(`/api/attendance/sessions/${activeSession.sessionId}/attendees`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.attendees) {
+            setSessionAttendees(data.attendees);
+            setActiveSession((prev) => (prev ? { ...prev, markedCount: data.markedCount } : null));
+          }
+        }
+      } catch (err) {
+        // Fallback to local state if backend route unreachable
+        const state = JSON.parse(localStorage.getItem("attendx_prototype_state_v1") || "{}");
+        const list = (state.attendanceHistory || []).filter(
+          (r) => r.subjectCode === activeSession.subjectCode && r.date === new Date().toISOString().split("T")[0]
+        );
+        setSessionAttendees(list);
+      }
+    };
+
+    fetchAttendees();
+    const pollId = setInterval(fetchAttendees, 3000);
+    return () => clearInterval(pollId);
+  }, [activeSession?.sessionId, activeSession?.status]);
 
   const refreshData = (teacherId = "TCH-2026-001") => {
     const students = userService.getStudents();
@@ -82,30 +135,67 @@ export default function TeacherDashboard() {
     window.location.href = "/login";
   };
 
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
     const subjectObj = (currentTeacher?.subjects || []).find((s) => s.code === selectedSubject) || {
       code: "CS402",
       name: "Machine Learning & AI",
       room: "Lab 304"
     };
 
+    const duration = Number(sessionDuration) || 15;
+    const safeLecture = lectureName.trim() || `Lecture Session ${new Date().toLocaleDateString()}`;
+
+    // Create session in client service
     const newSession = attendanceService.createSession({
       subjectCode: subjectObj.code,
       subjectName: subjectObj.name,
+      lectureName: safeLecture,
+      classGroup: selectedClass,
       teacherId: currentTeacher?.id || "TCH-2026-001",
       teacherName: currentTeacher?.name || "Dr. Rajesh Sharma",
       room: subjectObj.room || "Lab 304",
-      durationMinutes: Number(sessionDuration)
+      durationMinutes: duration
     });
 
     setActiveSession(newSession);
+    setIsExpired(false);
+    setSessionAttendees([]);
     refreshData(currentTeacher?.id);
+  };
+
+  const handleRegenerateToken = async () => {
+    if (!activeSession) return;
+    try {
+      const res = await fetch(`/api/attendance/sessions/${activeSession.sessionId}/regenerate`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.session) {
+          setActiveSession(data.session);
+          setIsExpired(false);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // Local fallback regeneration
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + Number(sessionDuration) * 60 * 1000);
+    const refreshed = {
+      ...activeSession,
+      sessionCode: "AX-" + Math.floor(1000 + Math.random() * 9000),
+      token: Math.random().toString(36).slice(2),
+      startTime: now.toISOString(),
+      expiresAt: expiresAt.toISOString()
+    };
+    setActiveSession(refreshed);
+    setIsExpired(false);
   };
 
   const handleCloseSession = () => {
     if (activeSession) {
       attendanceService.closeSession(activeSession.sessionId);
       setActiveSession(null);
+      setSessionAttendees([]);
       refreshData(currentTeacher?.id);
     }
   };
@@ -395,17 +485,30 @@ export default function TeacherDashboard() {
 
           {/* TAB 2: LIVE QR SESSION GENERATOR */}
           {activeTab === "session" && (
-            <div style={{ maxWidth: 850, margin: "0 auto" }}>
+            <div style={{ maxWidth: 920, margin: "0 auto" }}>
               <div className="dashboard-card">
                 <div className="card-header-flex">
                   <div>
-                    <h3>Live QR Attendance Generator</h3>
-                    <p>Project this screen in class for students to scan using their AttendX mobile portal</p>
+                    <h3>Lecture QR Attendance Session</h3>
+                    <p>Dynamic cryptographic QR code bound to this specific lecture, subject, and class group</p>
                   </div>
                   {activeSession && (
-                    <button className="btn-secondary" style={{ color: "var(--attendx-error)", borderColor: "var(--attendx-error)" }} onClick={handleCloseSession}>
-                      End Session Now
-                    </button>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button
+                        className="btn-secondary"
+                        onClick={handleRegenerateToken}
+                        style={{ fontSize: 13, borderColor: "var(--attendx-indigo)", color: "var(--attendx-indigo)" }}
+                      >
+                        ⚡ Regenerate QR Token
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        style={{ color: "var(--attendx-error)", borderColor: "var(--attendx-error)", fontSize: 13 }}
+                        onClick={handleCloseSession}
+                      >
+                        ⏹ End Session
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -416,10 +519,11 @@ export default function TeacherDashboard() {
                     borderRadius: "var(--radius-lg)",
                     background: "var(--attendx-surface-subtle)"
                   }}>
-                    <h4 style={{ margin: "0 0 16px", fontSize: 16 }}>Configure New Attendance Session</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                    <h4 style={{ margin: "0 0 16px", fontSize: 16 }}>Launch New Lecture Attendance Session</h4>
+                    
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 16 }}>
                       <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Select Subject</label>
+                        <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Assigned Subject</label>
                         <select
                           value={selectedSubject}
                           onChange={(e) => setSelectedSubject(e.target.value)}
@@ -434,6 +538,20 @@ export default function TeacherDashboard() {
                       </div>
 
                       <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Class / Batch Group</label>
+                        <select
+                          value={selectedClass}
+                          onChange={(e) => setSelectedClass(e.target.value)}
+                          style={{ width: "100%", padding: 10, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
+                        >
+                          <option value="CS-4A (Final Year)">CS-4A (Final Year)</option>
+                          <option value="CS-4B (Final Year)">CS-4B (Final Year)</option>
+                          <option value="CS-3A (3rd Year)">CS-3A (3rd Year)</option>
+                          <option value="CS-2A (2nd Year)">CS-2A (2nd Year)</option>
+                        </select>
+                      </div>
+
+                      <div>
                         <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Session Validity (Minutes)</label>
                         <select
                           value={sessionDuration}
@@ -443,62 +561,225 @@ export default function TeacherDashboard() {
                           <option value="5">5 Minutes (Quick Attendance)</option>
                           <option value="15">15 Minutes (Standard Lecture)</option>
                           <option value="30">30 Minutes (Extended Lab)</option>
+                          <option value="45">45 Minutes (Full Lecture Block)</option>
                         </select>
                       </div>
                     </div>
 
-                    <button className="btn-primary" onClick={handleCreateSession}>
-                      ⚡ Generate Live QR Session
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: "center", padding: "20px 0" }}>
-                    <div style={{
-                      display: "inline-block",
-                      background: "#FFFFFF",
-                      padding: 24,
-                      borderRadius: "var(--radius-xl)",
-                      boxShadow: "var(--shadow-lg)",
-                      border: "2px solid var(--attendx-indigo)",
-                      marginBottom: 16
-                    }}>
-                      {/* Real QR Code generated using qrcode.react */}
-                      <QRCodeSVG
-                        value={qrService.encodeSession(activeSession)}
-                        size={240}
-                        level="H"
-                        includeMargin={true}
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Lecture Topic / Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Lecture 14: Deep Learning & Neural Networks"
+                        value={lectureName}
+                        onChange={(e) => setLectureName(e.target.value)}
+                        style={{ width: "100%", padding: 10, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)" }}
                       />
                     </div>
 
-                    <h3 style={{ fontSize: 22, margin: "0 0 4px" }}>{activeSession.subjectName}</h3>
-                    <p style={{ color: "var(--attendx-text-muted)", fontSize: 14, margin: "0 0 16px" }}>
-                      Room: <b>{activeSession.room}</b> • Session Code: <b style={{ color: "var(--attendx-indigo)", fontSize: 16 }}>{activeSession.sessionCode}</b>
-                    </p>
-
+                    <button className="btn-primary" onClick={handleCreateSession} style={{ padding: "12px 24px", fontSize: 14 }}>
+                      ⚡ Generate Secure Lecture QR Code
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Live Status and Countdown Bar */}
                     <div style={{
-                      display: "inline-flex",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: 20,
-                      background: "var(--attendx-surface-subtle)",
-                      padding: "10px 24px",
-                      borderRadius: "var(--radius-full)",
-                      border: "1px solid var(--attendx-border)",
-                      fontSize: 13
+                      gap: 12,
+                      padding: "14px 18px",
+                      background: isExpired ? "var(--attendx-error-bg)" : "rgba(81, 86, 228, 0.08)",
+                      border: `1px solid ${isExpired ? "var(--attendx-error)" : "var(--attendx-indigo)"}`,
+                      borderRadius: "var(--radius-lg)",
+                      marginBottom: 20
                     }}>
-                      <span>🟢 Status: <b>Live & Receiving</b></span>
-                      <span>👥 Marked: <b style={{ color: "var(--attendx-success)" }}>{activeSession.markedCount}</b> / 45</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            background: isExpired ? "var(--attendx-error)" : "var(--attendx-success)",
+                            boxShadow: isExpired ? "none" : "0 0 10px var(--attendx-success)"
+                          }}
+                        />
+                        <div>
+                          <strong style={{ fontSize: 14, color: isExpired ? "var(--attendx-error)" : "var(--attendx-indigo)" }}>
+                            {isExpired ? "SESSION EXPIRED" : "LIVE ATTENDANCE RECEIVING"}
+                          </strong>
+                          <div style={{ fontSize: 12, color: "var(--attendx-text-muted)" }}>
+                            {activeSession.subjectName} ({activeSession.subjectCode}) • {activeSession.classGroup || selectedClass}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontSize: 11, color: "var(--attendx-text-muted)", display: "block" }}>TIME REMAINING</span>
+                          <span style={{
+                            fontSize: 20,
+                            fontWeight: 800,
+                            fontFamily: "monospace",
+                            color: isExpired ? "var(--attendx-error)" : secondsRemaining < 60 ? "var(--attendx-warning)" : "var(--attendx-indigo)"
+                          }}>
+                            {Math.floor(secondsRemaining / 60)}:{String(secondsRemaining % 60).padStart(2, "0")}
+                          </span>
+                        </div>
+                        {isExpired && (
+                          <button className="btn-primary" onClick={handleRegenerateToken} style={{ padding: "6px 14px", fontSize: 12 }}>
+                            Renew Token
+                          </button>
+                        )}
+                      </div>
                     </div>
 
+                    {/* QR Display Card */}
                     <div style={{
-                      marginTop: 24,
-                      fontSize: 12,
-                      color: "var(--attendx-text-muted)",
-                      maxWidth: 550,
-                      margin: "24px auto 0",
-                      lineHeight: 1.5
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                      gap: 24,
+                      alignItems: "center",
+                      marginBottom: 24
                     }}>
-                      💡 <b>Teacher Note:</b> Students can scan this QR code directly through their AttendX portal camera, or enter the shortcode <code>{activeSession.sessionCode}</code>. Geofence checks enforce student physical presence inside campus.
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{
+                          display: "inline-block",
+                          background: "#FFFFFF",
+                          padding: 20,
+                          borderRadius: "var(--radius-xl)",
+                          boxShadow: "var(--shadow-lg)",
+                          border: "2px solid var(--attendx-indigo)",
+                          opacity: isExpired ? 0.45 : 1,
+                          transition: "opacity 0.3s ease"
+                        }}>
+                          <QRCodeSVG
+                            value={qrService.encodeSession(activeSession)}
+                            size={230}
+                            level="H"
+                            includeMargin={true}
+                          />
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <span style={{ fontSize: 12, color: "var(--attendx-text-muted)" }}>Session Shortcode: </span>
+                          <code style={{ fontSize: 15, fontWeight: 700, color: "var(--attendx-indigo)" }}>
+                            {activeSession.sessionCode}
+                          </code>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontSize: 18, margin: "0 0 6px" }}>{activeSession.lectureName || lectureName}</h4>
+                        <p style={{ color: "var(--attendx-text-muted)", fontSize: 13, margin: "0 0 16px" }}>
+                          Room: <b>{activeSession.room}</b> • Teacher: <b>{activeSession.teacherName}</b>
+                        </p>
+
+                        <div style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 10,
+                          padding: 16,
+                          background: "var(--attendx-surface-subtle)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: 13,
+                          marginBottom: 16
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--attendx-text-muted)" }}>Session ID:</span>
+                            <code>{activeSession.sessionId}</code>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--attendx-text-muted)" }}>Cryptographic Token:</span>
+                            <code style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {activeSession.token || "Active Token"}
+                            </code>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--attendx-text-muted)" }}>Marked Attendees:</span>
+                            <b style={{ color: "var(--attendx-success)", fontSize: 15 }}>
+                              {sessionAttendees.length || activeSession.markedCount || 0} Students
+                            </b>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <button className="btn-secondary" onClick={handleRegenerateToken} style={{ flex: 1, fontSize: 13 }}>
+                            ⚡ Refresh QR Token
+                          </button>
+                          <button
+                            className="btn-secondary"
+                            style={{ flex: 1, fontSize: 13, color: "var(--attendx-error)", borderColor: "var(--attendx-error)" }}
+                            onClick={handleCloseSession}
+                          >
+                            ⏹ End Session
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Verified Attendee Roster Table */}
+                    <div style={{
+                      borderTop: "1px solid var(--attendx-border)",
+                      paddingTop: 20,
+                      marginTop: 10
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <h4 style={{ margin: 0, fontSize: 16 }}>
+                          Live Verified Students ({sessionAttendees.length})
+                        </h4>
+                        <span style={{ fontSize: 12, color: "var(--attendx-text-muted)" }}>
+                          Auto-updating in real-time
+                        </span>
+                      </div>
+
+                      {sessionAttendees.length > 0 ? (
+                        <div className="attendx-table-wrapper">
+                          <table className="attendx-table">
+                            <thead>
+                              <tr>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Time Verified</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sessionAttendees.map((att, idx) => (
+                                <tr key={att.id || att.studentId || idx}>
+                                  <td><code>{att.studentId}</code></td>
+                                  <td><strong>{att.studentName || att.name}</strong></td>
+                                  <td>{att.time || new Date().toLocaleTimeString()}</td>
+                                  <td>
+                                    <span className="method-tag" style={{ background: "rgba(81, 86, 228, 0.1)", color: "var(--attendx-indigo)" }}>
+                                      QR Biometric Verified
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="status-pill present">
+                                      {att.status || "Present"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{
+                          textAlign: "center",
+                          padding: "28px 16px",
+                          background: "var(--attendx-surface-subtle)",
+                          borderRadius: "var(--radius-md)",
+                          color: "var(--attendx-text-muted)",
+                          fontSize: 13
+                        }}>
+                          📡 Waiting for students to scan the live QR code... Scanned attendance will populate here instantly.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

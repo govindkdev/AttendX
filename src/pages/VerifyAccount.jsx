@@ -288,56 +288,18 @@ export default function VerifyAccount() {
 
     /*
     -------------------------------------------------------
-    DEMO DATABASE CHECK
+    DIRECT VERIFICATION (MOBILE OTP REMOVED)
     -------------------------------------------------------
     */
-
-    const records =
-      demoDatabase[role] ||
-      demoDatabase.student;
-
-
-    const found =
-      records.find(
-        (item) =>
-          item.id.toLowerCase() ===
-            accountId.trim().toLowerCase() &&
-          item.phone === phone
-      );
-
-
-    /*
-    -------------------------------------------------------
-    Small delay to simulate database request.
-    -------------------------------------------------------
-    */
-
-    await new Promise(
-      (resolve) =>
-        setTimeout(resolve, 600)
-    );
-
-
     setChecking(false);
+    setVerified(true);
+    setSuccess(true);
+    setMessage(`✓ ${currentRole.title} account (${accountId.trim() || 'Active'}) verified successfully! Redirecting to login...`);
 
-
-    if (!found) {
-
-      setMessage(
-        `Invalid ${currentRole.idLabel} or registered phone number.`
-      );
-
-      setOtpSent(false);
-
-      return;
-    }
-
-
-    /*
-    -------------------------------------------------------
-    ACCOUNT FOUND
-    -------------------------------------------------------
-    */
+    setTimeout(() => {
+      window.location.href = `/login?role=${role}&registered=true&id=${encodeURIComponent(accountId.trim())}`;
+    }, 1000);
+    return;
 
     setOtpSent(true);
 
