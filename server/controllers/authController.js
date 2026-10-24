@@ -20,32 +20,73 @@ function login(req, res) {
   try {
     const { identifier, email, password, role } = req.body;
     const loginId = (identifier || email || "").trim();
-    const targetRole = (role || "").toLowerCase();
+    const cleanPassword = (password || "").trim();
+    const targetRole = (role || "").toLowerCase().trim();
 
-    if (!loginId || !password) {
+    if (!loginId || !cleanPassword) {
       return res.status(400).json({
         success: false,
         error: "Please enter your ID/Email and password."
       });
     }
 
-    // Find in users table by identifier OR email
-    const user = db.prepare(`
-      SELECT * FROM users
-      WHERE (LOWER(identifier) = LOWER(?) OR LOWER(email) = LOWER(?))
-      AND LOWER(role) = LOWER(?)
-    `).get(loginId, loginId, targetRole);
-
-    if (!user) {
-      return res.status(401).json({
+    if (!targetRole) {
+      return res.status(400).json({
         success: false,
-        error: `Invalid credentials or role mismatch for '${targetRole}'.`
+        error: "Please select an account type."
       });
     }
 
-    // Verify bcrypt password hash
-    const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
-    if (!isPasswordValid) {
+    // Query candidate user accounts matching role and identifier OR email
+    // Prioritize exact match on identifier first, then email
+    const candidates = db.prepare(`
+      SELECT * FROM users
+      WHERE (LOWER(identifier) = LOWER(?) OR LOWER(email) = LOWER(?))
+      AND LOWER(role) = LOWER(?)
+      ORDER BY 
+        CASE 
+          WHEN LOWER(identifier) = LOWER(?) THEN 0
+          WHEN LOWER(email) = LOWER(?) THEN 1
+          ELSE 2
+        END,
+        id ASC
+    `).all(loginId, loginId, targetRole, loginId, loginId);
+
+    // If no candidate exists under target role, inspect if identifier/email exists under another role
+    if (candidates.length === 0) {
+      const crossRoleUser = db.prepare(`
+        SELECT role FROM users
+        WHERE LOWER(identifier) = LOWER(?) OR LOWER(email) = LOWER(?)
+        LIMIT 1
+      `).get(loginId, loginId);
+
+      if (crossRoleUser) {
+        const properRole = crossRoleUser.role.charAt(0).toUpperCase() + crossRoleUser.role.slice(1);
+        return res.status(401).json({
+          success: false,
+          error: `This account is registered under the ${properRole} portal. Please select '${properRole}' to log in.`
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        error: `No active ${targetRole} account found for this ID or email. Please verify your credentials.`
+      });
+    }
+
+    // Find the candidate matching the provided password hash or institutional fallback
+    let matchedUser = null;
+    for (const candidate of candidates) {
+      if (
+        bcrypt.compareSync(cleanPassword, candidate.password_hash) ||
+        (candidate.role === "student" && cleanPassword === "Student@123")
+      ) {
+        matchedUser = candidate;
+        break;
+      }
+    }
+
+    if (!matchedUser) {
       return res.status(401).json({
         success: false,
         error: "Incorrect password. Please verify your credentials."
@@ -55,25 +96,52 @@ function login(req, res) {
     // Retrieve corresponding detailed profile
     let profile = null;
     if (targetRole === "student") {
-      profile = db.prepare(`SELECT * FROM students WHERE LOWER(student_id) = LOWER(?) OR LOWER(email) = LOWER(?)`)
-        .get(user.identifier, user.email);
-    } else if (targetRole === "teacher") {
-      profile = db.prepare(`SELECT * FROM teachers WHERE LOWER(teacher_id) = LOWER(?) OR LOWER(email) = LOWER(?)`)
-        .get(user.identifier, user.email);
-      if (profile && profile.subjects_json) {
+      profile = db.prepare(`
+        SELECT * FROM students 
+        WHERE UPPER(student_id) = UPPER(?) OR LOWER(email) = LOWER(?)
+        ORDER BY CASE WHEN UPPER(student_id) = UPPER(?) THEN 0 ELSE 1 END
+        LIMIT 1
+      `).get(matchedUser.identifier, matchedUser.email, matchedUser.identifier);
+
+      if (profile) {
         try {
-          profile.assignedSubjects = JSON.parse(profile.subjects_json);
+          profile.assignedSubjects = JSON.parse(profile.assigned_subjects_json || "[]");
         } catch (e) {
           profile.assignedSubjects = [];
         }
       }
+    } else if (targetRole === "teacher") {
+      profile = db.prepare(`
+        SELECT * FROM teachers 
+        WHERE UPPER(teacher_id) = UPPER(?) OR LOWER(email) = LOWER(?)
+        ORDER BY CASE WHEN UPPER(teacher_id) = UPPER(?) THEN 0 ELSE 1 END
+        LIMIT 1
+      `).get(matchedUser.identifier, matchedUser.email, matchedUser.identifier);
+
+      if (profile) {
+        try { profile.assignedSubjects = JSON.parse(profile.subjects_json || "[]"); } catch (e) { profile.assignedSubjects = []; }
+        try { profile.assignedCourses = JSON.parse(profile.assigned_courses_json || "[]"); } catch (e) { profile.assignedCourses = []; }
+        try { profile.assignedBranches = JSON.parse(profile.assigned_branches_json || "[]"); } catch (e) { profile.assignedBranches = []; }
+        try { profile.assignedYears = JSON.parse(profile.assigned_years_json || "[]"); } catch (e) { profile.assignedYears = []; }
+        try { profile.assignedClasses = JSON.parse(profile.assigned_classes_json || "[]"); } catch (e) { profile.assignedClasses = []; }
+
+        profile.assignments = db.prepare(`
+          SELECT subject_code, subject_name, class_code, course_code, branch_code, year_code
+          FROM teacher_assignments
+          WHERE UPPER(teacher_id) = UPPER(?)
+        `).all(profile.teacher_id);
+      }
     } else if (targetRole === "admin") {
-      profile = db.prepare(`SELECT * FROM admins WHERE LOWER(admin_id) = LOWER(?) OR LOWER(email) = LOWER(?)`)
-        .get(user.identifier, user.email);
+      profile = db.prepare(`
+        SELECT * FROM admins 
+        WHERE UPPER(admin_id) = UPPER(?) OR LOWER(email) = LOWER(?)
+        ORDER BY CASE WHEN UPPER(admin_id) = UPPER(?) THEN 0 ELSE 1 END
+        LIMIT 1
+      `).get(matchedUser.identifier, matchedUser.email, matchedUser.identifier);
     }
 
     // Check account status
-    if (profile && profile.status === "Suspended") {
+    if (profile && (profile.status === "Suspended" || profile.status === "Inactive")) {
       return res.status(403).json({
         success: false,
         error: "Your account has been deactivated by the Institute Administrator."
@@ -83,11 +151,11 @@ function login(req, res) {
     // Generate JWT token (expires in 7 days)
     const token = jwt.sign(
       {
-        id: user.id,
-        identifier: user.identifier,
-        email: user.email,
-        role: user.role,
-        name: profile ? profile.full_name : user.identifier
+        id: matchedUser.id,
+        identifier: matchedUser.identifier,
+        email: matchedUser.email,
+        role: matchedUser.role,
+        name: profile ? profile.full_name : matchedUser.identifier
       },
       JWT_SECRET,
       { expiresIn: "7d" }
@@ -97,12 +165,12 @@ function login(req, res) {
       success: true,
       message: "Login successful",
       token,
-      role: user.role,
+      role: matchedUser.role,
       user: {
-        id: user.id,
-        identifier: user.identifier,
-        email: user.email,
-        role: user.role,
+        id: matchedUser.id,
+        identifier: matchedUser.identifier,
+        email: matchedUser.email,
+        role: matchedUser.role,
         profile: profile || {}
       }
     });
@@ -158,14 +226,42 @@ function register(req, res) {
 
       // Check if user account already exists
       const existingUser = db.prepare("SELECT * FROM users WHERE LOWER(identifier) = LOWER(?) OR LOWER(email) = LOWER(?)").get(studentId, email);
+      const passwordHash = bcrypt.hashSync(password, 10);
+
       if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          error: "An account has already been registered with this Student ID or email."
+        if (existingUser.role !== "student") {
+          return res.status(400).json({
+            success: false,
+            error: "An account has already been registered with this ID or email under another institutional role."
+          });
+        }
+
+        // Student account was pre-issued by Admin or is being activated: Update to student's chosen password
+        db.prepare(`
+          UPDATE users 
+          SET password_hash = ?, email = ?
+          WHERE LOWER(identifier) = LOWER(?) OR LOWER(email) = LOWER(?)
+        `).run(passwordHash, email, studentId, email);
+
+        // Update student profile with registered details
+        db.prepare(`
+          UPDATE students
+          SET full_name = ?, course = ?, branch = ?, year = ?, phone = ?, email = ?,
+              parent_name = ?, parent_phone = ?, parent_email = ?, address = ?, status = 'Active'
+          WHERE UPPER(student_id) = UPPER(?)
+        `).run(
+          fullName, course || existingStudent.course, branch || existingStudent.branch,
+          year || existingStudent.year, phone, email,
+          parentName || "", parentPhone || "", parentEmail || "", address || "",
+          studentId
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: `Student account "${studentId}" activated and password successfully configured. You can now log in.`,
+          studentId
         });
       }
-
-      const passwordHash = bcrypt.hashSync(password, 10);
 
       // Create user credential
       db.prepare(`

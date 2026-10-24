@@ -18,6 +18,7 @@ Features:
 import React, { useState, useEffect, useRef } from "react";
 import { attendanceService } from "../../services/attendanceService";
 import { userService } from "../../services/userService";
+import { voiceAnnouncer } from "../../utils/voiceAnnouncer";
 
 export default function FaceAttendanceModal({
   isOpen,
@@ -160,6 +161,10 @@ export default function FaceAttendanceModal({
           });
 
           if (markResult.success) {
+            voiceAnnouncer.speakAttendanceRecorded({
+              key: `${studentId}_${markResult.record?.id || "today"}`,
+              source: "FACE_MODAL"
+            });
             setScanStep("success");
             setScanMessage("Identity Verified! Attendance successfully logged.");
             setResultData({

@@ -3,6 +3,7 @@ const router = express.Router();
 const teacherController = require("../controllers/teacherController");
 
 router.get("/", teacherController.getTeachers);
+router.get("/:teacherId", teacherController.getTeacherById);
 router.post("/issue", teacherController.issueTeacherId);
 router.patch("/:teacherId/status", teacherController.toggleTeacherStatus);
 

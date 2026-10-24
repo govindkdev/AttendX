@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Footer from "../components/common/Footer";
 import "../style/Home.css";
 
 /*
@@ -278,31 +279,18 @@ function Home() {
             className="home-brand"
             onClick={() => setMobileMenu(false)}
           >
-
-            <span className="home-logo">
-
-              <span className="home-logo-one" />
-              <span className="home-logo-two" />
-              <span className="home-logo-dot" />
-
-            </span>
-
+            <img
+              src="/assets/attendx-logo.png"
+              alt="AttendX Logo"
+              className="attendx-brand-img"
+              style={{ width: 38, height: 38, objectFit: "contain", borderRadius: 8 }}
+            />
 
             <span className="home-brand-copy">
-
-              <strong>
-                AttendX
-              </strong>
-
-              <small>
-                Smart Attendance Infrastructure
-              </small>
-
+              <strong>AttendX</strong>
+              <small>Smart Attendance Infrastructure</small>
             </span>
-
           </a>
-
-
 
           <nav
             className={`home-nav ${
@@ -311,7 +299,6 @@ function Home() {
                 : ""
             }`}
           >
-
             <a
               href="/"
               className="active"
@@ -355,12 +342,20 @@ function Home() {
               Contact
             </a>
 
+            {/* Mobile Drawer Quick Portal Button */}
+            <div style={{ padding: "12px 14px", marginTop: 8 }}>
+              <a
+                href="/login"
+                className="btn-primary"
+                style={{ width: "100%", justifyContent: "center", textDecoration: "none", fontSize: 13 }}
+              >
+                Access Portals (Student / Admin) →
+              </a>
+            </div>
           </nav>
 
-
-
           <a
-            href="/contact"
+            href="/login"
             className="home-header-button"
           >
             Get Started
@@ -1312,132 +1307,70 @@ function Home() {
               </h3>
 
               <p>
-
-                Normal flow requires no manual
-                interaction. When necessary,
-                the student can use Scan QR
-                from the login portal.
-
+                Mobile-first portal for students. Allows scanning authorized lecture QR codes, viewing personal attendance percentages, and reviewing lecture history.
               </p>
-
+              <a href="/login?role=student" className="home-secondary-button" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "8px 16px" }}>
+                <span>Launch Student Portal</span>
+                <span>→</span>
+              </a>
             </article>
-
-
 
             <article className="role-card">
-
               <div className="role-icon">
-                <Icon
-                  name="camera"
-                  size={23}
-                />
+                <Icon name="camera" size={23} />
               </div>
-
-              <span>
-                TEACHER
-              </span>
-
-              <h3>
-                Session control
-              </h3>
-
+              <span>TEACHER</span>
+              <h3>Faculty Session Console</h3>
               <p>
-
-                Teacher can generate the active
-                attendance QR and manage attendance
-                for the assigned class or session.
-
+                Faculty portal for generating unique cryptographic QR codes for every lecture, tracking live verified attendees in real-time, and managing class rosters.
               </p>
-
+              <a href="/login?role=teacher" className="home-secondary-button" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "8px 16px" }}>
+                <span>Launch Faculty Station</span>
+                <span>→</span>
+              </a>
             </article>
-
-
 
             <article className="role-card">
-
               <div className="role-icon">
-                <Icon
-                  name="admin"
-                  size={23}
-                />
+                <Icon name="admin" size={23} />
               </div>
-
-              <span>
-                ADMIN
-              </span>
-
-              <h3>
-                Complete control
-              </h3>
-
+              <span>ADMIN</span>
+              <h3>Central Authority Console</h3>
               <p>
-
-                Admin manages students, teachers,
-                attendance records and manual
-                attendance operations.
-
+                Admin authority dashboard for 25-sample biometric face enrollment, camera Face AI kiosk sessions, anti-proxy audit ledger, and master analytics.
               </p>
-
+              <a href="/login?role=admin" className="home-secondary-button" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "8px 16px" }}>
+                <span>Launch Admin Console</span>
+                <span>→</span>
+              </a>
             </article>
-
           </div>
-
         </div>
-
       </section>
-
-
 
       {/* =================================================
           FINAL CTA
       ================================================= */}
-
       <section className="home-final">
-
         <div className="home-container">
-
           <div className="home-final-box">
-
             <div>
-
-              <span className="section-kicker">
-                ATTENDX
-              </span>
-
+              <span className="section-kicker">ENTERPRISE DEPLOYMENT</span>
               <h2>
-
-                Attendance should be easy
-                to use and hard to
-
-                <span>
-                  misuse.
-                </span>
-
+                Attendance that is effortless to use and resilient against
+                <span> proxy fraud.</span>
               </h2>
-
             </div>
-
-
-            <a
-              href="/how-it-works"
-              className="home-final-button"
-            >
-
-              See Full Workflow
-
-              <Icon
-                name="arrow"
-                size={15}
-              />
-
+            <a href="/login" className="home-final-button">
+              Sign In to AttendX
+              <Icon name="arrow" size={15} />
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Production Footer */}
+      <Footer />
     </div>
   );
 }

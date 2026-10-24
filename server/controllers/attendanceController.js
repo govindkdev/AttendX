@@ -15,6 +15,7 @@ const crypto = require("crypto");
 const db = require("../config/database");
 const biometricEngine = require("../utils/biometricEngine");
 const geofenceCalculator = require("../utils/geofenceCalculator");
+const googleSheetsService = require("../services/googleSheetsService");
 
 /**
  * Format today's date YYYY-MM-DD
@@ -66,6 +67,20 @@ function markFaceAttendance(req, res) {
       return res.status(403).json({ success: false, error: "Student account is suspended. Contact administration." });
     }
 
+    // Determine Subject, Session & Room early for audit logging
+    let assignedSubject = subjectName || req.body.subject || "Machine Learning & AI";
+    let assignedCode = subjectCode || "CS402";
+    let assignedRoom = room || "Lab 304";
+
+    if (sessionCode) {
+      const activeSession = db.prepare("SELECT * FROM attendance_sessions WHERE UPPER(session_code) = UPPER(?) AND status = 'Active'").get(sessionCode);
+      if (activeSession) {
+        assignedSubject = activeSession.subject_name;
+        assignedCode = activeSession.subject_code;
+        assignedRoom = activeSession.room;
+      }
+    }
+
     // Step 2: Check Biometric Enrollment Status
     if (!student.face_enrolled) {
       return res.status(400).json({
@@ -98,6 +113,17 @@ function markFaceAttendance(req, res) {
 
     // If similarity test fails
     if (!matchResult.isMatch) {
+      logSecurityEvent({
+        eventType: "FACE_REJECTED",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: assignedCode,
+        lectureName: assignedSubject,
+        method: "Face AI",
+        status: "BLOCKED",
+        riskLevel: "High",
+        details: `Biometric confidence ${matchResult.confidence} below institutional threshold (80.0%). Vector similarity: ${matchResult.similarity}.`
+      });
       return res.status(400).json({
         success: false,
         biometricFailed: true,
@@ -118,26 +144,23 @@ function markFaceAttendance(req, res) {
     const geofenceResult = geofenceCalculator.verifyGeofence(latitude, longitude, campusSettings);
 
     if (campusSettings.strict_mode && !geofenceResult.withinGeofence) {
+      logSecurityEvent({
+        eventType: "GEOFENCE_VIOLATION",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: assignedCode,
+        lectureName: assignedSubject,
+        method: "Face AI",
+        status: "BLOCKED",
+        riskLevel: "Medium",
+        details: `Campus perimeter breach: Detected distance ${geofenceResult.distanceMeters}m exceeds permitted radius ${geofenceResult.allowedRadius}m.`
+      });
       return res.status(403).json({
         success: false,
         geofenceFailed: true,
         error: `Campus Geofence violation: You are ${geofenceResult.distanceMeters}m from campus center (Allowed radius is ${geofenceResult.allowedRadius}m). Attendance can only be logged within campus premises.`,
         geofence: geofenceResult
       });
-    }
-
-    // Step 6: Determine Subject & Session
-    let assignedSubject = subjectName || "Machine Learning & AI";
-    let assignedCode = subjectCode || "CS402";
-    let assignedRoom = room || "Lab 304";
-
-    if (sessionCode) {
-      const activeSession = db.prepare("SELECT * FROM attendance_sessions WHERE UPPER(session_code) = UPPER(?) AND status = 'Active'").get(sessionCode);
-      if (activeSession) {
-        assignedSubject = activeSession.subject_name;
-        assignedCode = activeSession.subject_code;
-        assignedRoom = activeSession.room;
-      }
     }
 
     // Step 7: Duplicate Attendance Prevention (same day + same subject)
@@ -150,6 +173,17 @@ function markFaceAttendance(req, res) {
     `).get(targetStudentId, today, assignedCode, assignedSubject);
 
     if (existingRecord) {
+      logSecurityEvent({
+        eventType: "DUPLICATE_BLOCKED",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: assignedCode,
+        lectureName: assignedSubject,
+        method: "Face AI",
+        status: "BLOCKED",
+        riskLevel: "Medium",
+        details: `Duplicate check-in blocked: Student already checked in at ${existingRecord.time} today.`
+      });
       return res.status(400).json({
         success: false,
         duplicate: true,
@@ -165,8 +199,9 @@ function markFaceAttendance(req, res) {
     db.prepare(`
       INSERT INTO attendance_records (
         id, student_id, student_name, date, time, subject,
-        subject_code, method, status, geofence_verified, confidence, room
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Face AI', 'Present', ?, ?, ?)
+        subject_code, lecture_name, method, status, geofence_verified, confidence, room,
+        course, branch, academic_year, sheets_synced, sheets_sync_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Face AI', 'Present', ?, ?, ?, ?, ?, ?, 0, 'Pending')
     `).run(
       recordId,
       student.student_id,
@@ -175,10 +210,20 @@ function markFaceAttendance(req, res) {
       currentTime,
       assignedSubject,
       assignedCode,
+      assignedSubject,
       geofenceResult.withinGeofence ? 1 : 0,
       matchResult.confidence,
-      assignedRoom
+      assignedRoom,
+      student.course || "B.Tech",
+      student.branch || "Computer Science & Engineering",
+      student.year || "4th Year"
     );
+
+    // Queue and sync to Google Sheets asynchronously
+    const committedFaceRecord = db.prepare("SELECT * FROM attendance_records WHERE id = ?").get(recordId);
+    if (committedFaceRecord) {
+      googleSheetsService.syncAttendanceRecord(committedFaceRecord).catch((e) => console.warn("[GoogleSheets] Face sync notice:", e.message));
+    }
 
     // Step 9: Increment active session count if session exists
     if (sessionCode) {
@@ -197,11 +242,24 @@ function markFaceAttendance(req, res) {
     db.prepare("UPDATE students SET overall_attendance = ? WHERE UPPER(student_id) = UPPER(?)").run(updatedPct, targetStudentId);
 
     // Step 11: Notification
-    const notifId = `NOTIF-${Date.now().toString().slice(-5)}`;
+    const notifId = `NOTIF-${Date.now().toString().slice(-5)}-${Math.random().toString(36).slice(2, 6)}`;
     db.prepare(`
       INSERT INTO notifications (id, recipient_role, recipient_id, title, message, timestamp, read, type)
       VALUES (?, 'student', ?, 'Face AI Attendance Verified', ?, ?, 0, 'success')
     `).run(notifId, targetStudentId, `Attendance confirmed for ${assignedSubject} (${assignedCode}) at ${currentTime}. Match confidence: ${matchResult.confidence}.`, currentTime);
+
+    // Step 12: Record Success in Anti-Proxy Security Audit Ledger
+    logSecurityEvent({
+      eventType: "FACE_VERIFIED",
+      studentId: student.student_id,
+      studentName: student.full_name,
+      subjectCode: assignedCode,
+      lectureName: assignedSubject,
+      method: "Face AI",
+      status: "VERIFIED",
+      riskLevel: "Low",
+      details: `Biometric face match verified (${matchResult.confidence}). Campus perimeter and liveness confirmed.`
+    });
 
     return res.status(201).json({
       success: true,
@@ -227,6 +285,298 @@ function markFaceAttendance(req, res) {
   } catch (error) {
     console.error("markFaceAttendance error:", error);
     return res.status(500).json({ success: false, error: "Failed to process Face AI attendance" });
+  }
+}
+
+/**
+ * 1-to-N Biometric Identification for Admin Face Attendance Kiosk
+ * Identifies the subject appearing in front of the kiosk camera against all enrolled student templates.
+ * Enforces:
+ * - Cosine similarity >= 0.82
+ * - Margin >= 0.08 over second candidate
+ * - Rejection of unknown faces (does NOT fall back to other students)
+ * - Anti-duplicate lecture guard: If already marked, displays confirmation and stops!
+ */
+function kioskIdentifyFace(req, res) {
+  try {
+    const {
+      probeVector: clientVector,
+      faceSnapshot,
+      subjectCode,
+      subjectName,
+      room,
+      sessionCode,
+      sessionId,
+      lectureName,
+      teacherName,
+      teacherId
+    } = req.body;
+
+    if (!faceSnapshot && (!clientVector || clientVector.length !== 512)) {
+      return res.status(400).json({
+        success: false,
+        status: "NO_FRAME",
+        error: "Face snapshot frame or probe vector is required for biometric identification."
+      });
+    }
+
+    let assignedSubject = subjectName || "Machine Learning & AI";
+    let assignedCode = subjectCode || "CS402";
+    let assignedRoom = room || "Lab 304";
+    let assignedSessionId = sessionId || null;
+    let assignedLecture = lectureName || assignedSubject;
+    let assignedTeacherName = teacherName || null;
+    let assignedTeacherId = teacherId || null;
+
+    if (sessionCode) {
+      const activeSession = db.prepare("SELECT * FROM attendance_sessions WHERE UPPER(session_code) = UPPER(?) AND status = 'Active'").get(sessionCode);
+      if (activeSession) {
+        assignedSubject = activeSession.subject_name;
+        assignedCode = activeSession.subject_code;
+        assignedRoom = activeSession.room;
+        assignedSessionId = activeSession.session_id;
+        assignedLecture = activeSession.lecture_name || assignedSubject;
+        assignedTeacherName = activeSession.teacher_name || assignedTeacherName;
+        assignedTeacherId = activeSession.teacher_id || assignedTeacherId;
+      }
+    }
+
+    // Step 1: Query all active students with enrolled templates
+    const enrolledRows = db.prepare(`
+      SELECT fe.student_id, fe.face_template_id, fe.embedding_vector, fe.quality_score,
+             s.full_name, s.course, s.branch, s.status
+      FROM face_embeddings fe
+      JOIN students s ON UPPER(fe.student_id) = UPPER(s.student_id)
+      WHERE s.status = 'Active'
+    `).all();
+
+    if (enrolledRows.length === 0) {
+      return res.status(200).json({
+        success: false,
+        status: "NO_TEMPLATES",
+        message: "No active biometric facial templates found in institutional registry. Please enroll students first."
+      });
+    }
+
+    // Step 2: Parse candidate vector templates
+    const candidateList = [];
+    for (const row of enrolledRows) {
+      try {
+        const vec = JSON.parse(row.embedding_vector);
+        if (Array.isArray(vec) && vec.length === 512) {
+          candidateList.push({
+            studentId: row.student_id,
+            fullName: row.full_name,
+            course: row.course,
+            branch: row.branch,
+            templateId: row.face_template_id,
+            vector: vec
+          });
+        }
+      } catch (e) {
+        console.warn(`Failed to parse template for ${row.student_id}:`, e.message);
+      }
+    }
+
+    // Step 3: Resolve probe vector from incoming request (client spatial vector or payload extraction)
+    const probeVector = Array.isArray(clientVector) && clientVector.length === 512
+      ? clientVector
+      : biometricEngine.extractEmbeddingFromPayload(faceSnapshot);
+
+    // Step 4: Perform 1-to-N matching with strict confidence and margin thresholds
+    const matchResult = biometricEngine.findBestCandidate(probeVector, candidateList, {
+      minConfidence: 0.82,
+      minMargin: 0.08,
+      ambiguityThreshold: 0.75
+    });
+
+    // Step 5: Handle UNKNOWN Face
+    if (matchResult.status === "UNKNOWN") {
+      logSecurityEvent({
+        eventType: "FACE_UNKNOWN",
+        studentId: "UNKNOWN",
+        studentName: "Unenrolled Subject",
+        subjectCode: assignedCode,
+        lectureName: assignedSubject,
+        method: "Face AI",
+        status: "BLOCKED",
+        riskLevel: "Low",
+        details: matchResult.message
+      });
+
+      return res.status(200).json({
+        success: false,
+        status: "UNKNOWN",
+        confidence: matchResult.confidence || "0.0%",
+        message: "Unknown face detected. Subject is not enrolled in the institutional biometric registry."
+      });
+    }
+
+    // Step 6: Handle AMBIGUOUS Match
+    if (matchResult.status === "AMBIGUOUS") {
+      logSecurityEvent({
+        eventType: "FACE_AMBIGUOUS",
+        studentId: matchResult.bestCandidate ? matchResult.bestCandidate.studentId : "AMBIGUOUS",
+        studentName: matchResult.bestCandidate ? matchResult.bestCandidate.fullName : "Multiple Candidates",
+        subjectCode: assignedCode,
+        lectureName: assignedSubject,
+        method: "Face AI",
+        status: "FLAGGED",
+        riskLevel: "Medium",
+        details: matchResult.message
+      });
+
+      return res.status(200).json({
+        success: false,
+        status: "AMBIGUOUS",
+        bestCandidate: matchResult.bestCandidate,
+        runnerUp: matchResult.runnerUp,
+        confidence: matchResult.confidence,
+        margin: matchResult.margin,
+        message: "Ambiguous match detected between multiple profiles. Please center your face directly in the camera."
+      });
+    }
+
+    // Step 7: Identity Confirmed
+    const matched = matchResult.matchedCandidate;
+    const today = getTodayDate();
+
+    // Step 8: Anti-Duplicate Check - Has this student ALREADY been marked today for this lecture?
+    const existingRecord = db.prepare(`
+      SELECT * FROM attendance_records
+      WHERE UPPER(student_id) = UPPER(?)
+      AND date = ?
+      AND (subject_code = ? OR subject = ?)
+    `).get(matched.studentId, today, assignedCode, assignedSubject);
+
+    if (existingRecord) {
+      // CRITICAL: DO NOT MARK ANY OTHER STUDENT. Display confirmation and return.
+      return res.status(200).json({
+        success: true,
+        status: "ALREADY_MARKED",
+        alreadyMarked: true,
+        student: {
+          studentId: matched.studentId,
+          fullName: matched.fullName,
+          course: matched.course,
+          branch: matched.branch,
+          templateId: matched.templateId
+        },
+        existingRecord,
+        similarity: matchResult.similarity,
+        confidence: matchResult.confidence,
+        message: `✓ Already Marked: ${matched.fullName} (${matched.studentId}) attendance was already recorded today at ${existingRecord.time} (${existingRecord.method}).`
+      });
+    }
+
+    // Step 9: Not marked yet - Record attendance for THIS matched student
+    const recordId = `ATT-${Date.now().toString().slice(-6)}`;
+    const currentTime = getCurrentTimeFormatted();
+
+    db.prepare(`
+      INSERT INTO attendance_records (
+        id, student_id, student_name, date, time, subject,
+        subject_code, lecture_name, session_id, teacher_id, teacher_name,
+        course, branch, academic_year, method, status, geofence_verified, confidence, room,
+        sheets_synced, sheets_sync_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Face AI', 'Present', 1, ?, ?, 0, 'Pending')
+    `).run(
+      recordId,
+      matched.studentId,
+      matched.fullName,
+      today,
+      currentTime,
+      assignedSubject,
+      assignedCode,
+      assignedLecture,
+      assignedSessionId,
+      assignedTeacherId,
+      assignedTeacherName,
+      matched.course || "B.Tech",
+      matched.branch || "Computer Science & Engineering",
+      matched.year || "4th Year",
+      matchResult.confidence,
+      assignedRoom
+    );
+
+    // Queue and sync to Google Sheets asynchronously
+    const committedKioskRecord = db.prepare("SELECT * FROM attendance_records WHERE id = ?").get(recordId);
+    if (committedKioskRecord) {
+      googleSheetsService.syncAttendanceRecord(committedKioskRecord).catch((e) => console.warn("[GoogleSheets] Kiosk sync notice:", e.message));
+    }
+
+    // Increment session count if active
+    if (sessionCode) {
+      db.prepare(`
+        UPDATE attendance_sessions
+        SET marked_count = marked_count + 1
+        WHERE UPPER(session_code) = UPPER(?)
+      `).run(sessionCode);
+    }
+
+    // Update student overall attendance percentage
+    const totalRecs = db.prepare("SELECT COUNT(*) as c FROM attendance_records WHERE UPPER(student_id) = UPPER(?)").get(matched.studentId).c;
+    const presRecs = db.prepare("SELECT COUNT(*) as c FROM attendance_records WHERE UPPER(student_id) = UPPER(?) AND status = 'Present'").get(matched.studentId).c;
+    const newPct = totalRecs > 0 ? Number(((presRecs / totalRecs) * 100).toFixed(1)) : 89.0;
+    db.prepare("UPDATE students SET overall_attendance = ? WHERE UPPER(student_id) = UPPER(?)").run(newPct, matched.studentId);
+
+    // Notification for student
+    const notifId = `NOTIF-${Date.now().toString().slice(-5)}-${Math.random().toString(36).slice(2, 6)}`;
+    db.prepare(`
+      INSERT INTO notifications (id, recipient_role, recipient_id, title, message, timestamp, read, type)
+      VALUES (?, 'student', ?, 'Face AI Attendance Verified', ?, ?, 0, 'success')
+    `).run(
+      notifId,
+      matched.studentId,
+      `Attendance confirmed for ${assignedSubject} (${assignedCode}) at ${currentTime}. Match confidence: ${matchResult.confidence}.`,
+      currentTime
+    );
+
+    // Log verified event in security audit ledger
+    logSecurityEvent({
+      eventType: "FACE_VERIFIED",
+      studentId: matched.studentId,
+      studentName: matched.fullName,
+      subjectCode: assignedCode,
+      lectureName: assignedSubject,
+      method: "Face AI",
+      status: "VERIFIED",
+      riskLevel: "Low",
+      details: `Kiosk 1-to-N biometric recognition verified. Similarity: ${matchResult.similarity} (Confidence: ${matchResult.confidence}). Candidate margin: ${((matchResult.margin || 0) * 100).toFixed(1)}%.`
+    });
+
+    return res.status(200).json({
+      success: true,
+      status: "RECORDED",
+      alreadyMarked: false,
+      student: {
+        studentId: matched.studentId,
+        fullName: matched.fullName,
+        course: matched.course,
+        branch: matched.branch,
+        templateId: matched.templateId
+      },
+      record: {
+        id: recordId,
+        studentId: matched.studentId,
+        studentName: matched.fullName,
+        date: today,
+        time: currentTime,
+        subject: assignedSubject,
+        subjectCode: assignedCode,
+        method: "Face AI",
+        status: "Present",
+        confidence: matchResult.confidence,
+        room: assignedRoom
+      },
+      similarity: matchResult.similarity,
+      confidence: matchResult.confidence,
+      margin: matchResult.margin,
+      message: `✓ Verified & Recorded: ${matched.fullName} (${matched.studentId})`
+    });
+  } catch (error) {
+    console.error("kioskIdentifyFace error:", error);
+    return res.status(500).json({ success: false, error: "Failed to process kiosk face identification" });
   }
 }
 
@@ -269,10 +619,32 @@ function markQRAttendance(req, res) {
     // Validate active session
     const session = db.prepare("SELECT * FROM attendance_sessions WHERE UPPER(session_code) = UPPER(?)").get(targetCode);
     if (!session) {
+      logSecurityEvent({
+        eventType: "QR_INVALID",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: null,
+        lectureName: null,
+        method: "QR Scan",
+        status: "BLOCKED",
+        riskLevel: "High",
+        details: `Unrecognized or fabricated QR token payload: "${targetCode}".`
+      });
       return res.status(404).json({ success: false, error: `Invalid QR Code. No active session found with code "${targetCode}".` });
     }
 
     if (session.status !== "Active") {
+      logSecurityEvent({
+        eventType: "QR_INVALID",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: session.subject_code,
+        lectureName: session.lecture_name,
+        method: "QR Scan",
+        status: "BLOCKED",
+        riskLevel: "Medium",
+        details: `Attempted check-in on terminated/closed session ${session.session_id}.`
+      });
       return res.status(400).json({ success: false, error: "This attendance session has already been closed by faculty." });
     }
 
@@ -280,6 +652,17 @@ function markQRAttendance(req, res) {
     const now = new Date();
     const expiry = new Date(session.expires_at);
     if (now > expiry) {
+      logSecurityEvent({
+        eventType: "QR_EXPIRED",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: session.subject_code,
+        lectureName: session.lecture_name,
+        method: "QR Scan",
+        status: "BLOCKED",
+        riskLevel: "Low",
+        details: `Expired lecture QR code token scanned. Expired at ${session.expires_at}.`
+      });
       return res.status(400).json({ success: false, error: "QR code has expired. Please ask the instructor to generate a fresh QR session." });
     }
 
@@ -293,6 +676,17 @@ function markQRAttendance(req, res) {
 
     const geofenceResult = geofenceCalculator.verifyGeofence(latitude, longitude, campusSettings);
     if (campusSettings.strict_mode && !geofenceResult.withinGeofence) {
+      logSecurityEvent({
+        eventType: "GEOFENCE_VIOLATION",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: session.subject_code,
+        lectureName: session.lecture_name,
+        method: "QR Scan",
+        status: "BLOCKED",
+        riskLevel: "Medium",
+        details: `Campus perimeter breach on QR scan: Distance ${geofenceResult.distanceMeters}m > allowed ${geofenceResult.allowedRadius}m.`
+      });
       return res.status(403).json({
         success: false,
         geofenceFailed: true,
@@ -309,6 +703,17 @@ function markQRAttendance(req, res) {
     `).get(targetStudentId, today, session.subject_code);
 
     if (existing) {
+      logSecurityEvent({
+        eventType: "DUPLICATE_BLOCKED",
+        studentId: student.student_id,
+        studentName: student.full_name,
+        subjectCode: session.subject_code,
+        lectureName: session.lecture_name,
+        method: "QR Scan",
+        status: "BLOCKED",
+        riskLevel: "Medium",
+        details: `Duplicate QR check-in blocked: Already recorded at ${existing.time}.`
+      });
       return res.status(400).json({
         success: false,
         duplicate: true,
@@ -324,8 +729,10 @@ function markQRAttendance(req, res) {
     db.prepare(`
       INSERT INTO attendance_records (
         id, session_id, student_id, student_name, date, time, subject,
-        subject_code, lecture_name, method, status, geofence_verified, confidence, room
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'QR Backup', 'Present', ?, 'QR Validated', ?)
+        subject_code, lecture_name, teacher_id, teacher_name,
+        course, branch, academic_year, method, status, geofence_verified, confidence, room,
+        sheets_synced, sheets_sync_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QR Backup', 'Present', ?, 'QR Validated', ?, 0, 'Pending')
     `).run(
       recordId,
       session.session_id,
@@ -336,9 +743,20 @@ function markQRAttendance(req, res) {
       session.subject_name,
       session.subject_code,
       session.lecture_name || "Lecture Session",
+      session.teacher_id || "TCH-2026-001",
+      session.teacher_name || "Dr. Rajesh Sharma",
+      student.course || "B.Tech",
+      student.branch || "Computer Science & Engineering",
+      student.year || "4th Year",
       geofenceResult.withinGeofence ? 1 : 0,
       session.room
     );
+
+    // Queue and sync to Google Sheets asynchronously
+    const committedQrRecord = db.prepare("SELECT * FROM attendance_records WHERE id = ?").get(recordId);
+    if (committedQrRecord) {
+      googleSheetsService.syncAttendanceRecord(committedQrRecord).catch((e) => console.warn("[GoogleSheets] QR sync notice:", e.message));
+    }
 
     // Increment session counter
     db.prepare("UPDATE attendance_sessions SET marked_count = marked_count + 1 WHERE session_id = ?").run(session.session_id);
@@ -348,6 +766,19 @@ function markQRAttendance(req, res) {
     const presentRecords = db.prepare("SELECT COUNT(*) as count FROM attendance_records WHERE UPPER(student_id) = UPPER(?) AND status = 'Present'").get(targetStudentId).count;
     const updatedPct = totalRecords > 0 ? Number(((presentRecords / totalRecords) * 100).toFixed(1)) : 88.5;
     db.prepare("UPDATE students SET overall_attendance = ? WHERE UPPER(student_id) = UPPER(?)").run(updatedPct, targetStudentId);
+
+    // Record verified QR attendance in Anti-Proxy Security Audit Ledger
+    logSecurityEvent({
+      eventType: "QR_VERIFIED",
+      studentId: student.student_id,
+      studentName: student.full_name,
+      subjectCode: session.subject_code,
+      lectureName: session.lecture_name || "Lecture Session",
+      method: "QR Scan",
+      status: "VERIFIED",
+      riskLevel: "Low",
+      details: `Lecture QR token validated for session ${session.session_id} (${session.lecture_name || 'Class'}). Campus perimeter verified.`
+    });
 
     return res.status(201).json({
       success: true,
@@ -659,24 +1090,65 @@ function correctAttendanceRecord(req, res) {
 function getStudentAttendance(req, res) {
   try {
     const { studentId } = req.params;
+    const student = db.prepare("SELECT * FROM students WHERE UPPER(student_id) = UPPER(?)").get(studentId);
+
     const records = db.prepare(`
-      SELECT * FROM attendance_records
-      WHERE UPPER(student_id) = UPPER(?)
-      ORDER BY date DESC, time DESC
+      SELECT ar.*, s.course as student_course, s.branch as student_branch, s.year as academic_year, s.full_name
+      FROM attendance_records ar
+      LEFT JOIN students s ON UPPER(ar.student_id) = UPPER(s.student_id)
+      WHERE UPPER(ar.student_id) = UPPER(?)
+      ORDER BY ar.date DESC, ar.time DESC
     `).all(studentId);
 
     const total = records.length;
     const present = records.filter((r) => r.status === "Present").length;
     const late = records.filter((r) => r.status === "Late").length;
     const absent = records.filter((r) => r.status === "Absent").length;
-    const faceCount = records.filter((r) => r.method === "Face AI").length;
-    const qrCount = records.filter((r) => r.method === "QR Backup").length;
+    const faceCount = records.filter((r) => (r.method || "").toLowerCase().includes("face")).length;
+    const qrCount = records.filter((r) => (r.method || "").toLowerCase().includes("qr")).length;
 
-    const rate = total > 0 ? Number(((present / total) * 100).toFixed(1)) : 88.0;
+    const rate = total > 0 ? Number((((present + late * 0.5) / total) * 100).toFixed(1)) : 0.0;
+
+    // Subject-wise percentage breakdown
+    let assignedSubjects = [];
+    if (student && student.assigned_subjects_json) {
+      try { assignedSubjects = JSON.parse(student.assigned_subjects_json); } catch {}
+    }
+
+    const subjectBreakdown = assignedSubjects.map((sub) => {
+      const code = sub.code || sub.subject_code || sub;
+      const name = sub.name || sub.subject_name || code;
+      const subRecords = records.filter((r) => r.subject_code === code || (r.subject && r.subject.includes(code)));
+      const subTotal = subRecords.length;
+      const subPresent = subRecords.filter((r) => r.status === "Present").length;
+      const subLate = subRecords.filter((r) => r.status === "Late").length;
+      const subRate = subTotal > 0 ? Number((((subPresent + subLate * 0.5) / subTotal) * 100).toFixed(1)) : 0.0;
+      return {
+        code,
+        name,
+        teacher: sub.teacher || "Faculty TBA",
+        room: sub.room || "LT-101",
+        totalClasses: subTotal,
+        present: subPresent,
+        late: subLate,
+        absent: subRecords.filter((r) => r.status === "Absent").length,
+        percentage: subRate
+      };
+    });
 
     return res.json({
       success: true,
       studentId,
+      student: student ? {
+        studentId: student.student_id,
+        fullName: student.full_name,
+        course: student.course,
+        branch: student.branch,
+        year: student.year,
+        rollNumber: student.roll_number,
+        email: student.email,
+        faceEnrolled: Boolean(student.face_enrolled)
+      } : null,
       summary: {
         totalClasses: total,
         present,
@@ -686,45 +1158,73 @@ function getStudentAttendance(req, res) {
         faceCount,
         qrCount
       },
+      subjectBreakdown,
       records
     });
   } catch (error) {
+    console.error("getStudentAttendance error:", error);
     return res.status(500).json({ success: false, error: "Failed to get student attendance history" });
   }
 }
 
 /**
- * Get all attendance records (with filters for date, subject, method, status)
+ * Get all attendance records (with filters for date, subject, method, status, course, branch, search)
  */
 function getAllAttendanceRecords(req, res) {
   try {
-    const { date, subjectCode, method, status, studentId, limit } = req.query;
+    const { date, subjectCode, method, status, studentId, course, branch, year, teacherId, search, limit } = req.query;
 
-    let query = "SELECT * FROM attendance_records WHERE 1=1";
+    let query = `
+      SELECT ar.*, s.course as student_course, s.branch as student_branch, s.year as student_year
+      FROM attendance_records ar
+      LEFT JOIN students s ON UPPER(ar.student_id) = UPPER(s.student_id)
+      WHERE 1=1
+    `;
     const params = [];
 
     if (date) {
-      query += " AND date = ?";
+      query += " AND ar.date = ?";
       params.push(date);
     }
-    if (subjectCode && subjectCode !== "All") {
-      query += " AND subject_code = ?";
+    if (subjectCode && subjectCode !== "All" && subjectCode !== "all") {
+      query += " AND ar.subject_code = ?";
       params.push(subjectCode);
     }
-    if (method && method !== "All") {
-      query += " AND method = ?";
-      params.push(method);
+    if (method && method !== "All" && method !== "all") {
+      query += " AND LOWER(ar.method) LIKE LOWER(?)";
+      params.push(`%${method}%`);
     }
-    if (status && status !== "All") {
-      query += " AND status = ?";
+    if (status && status !== "All" && status !== "all") {
+      query += " AND LOWER(ar.status) = LOWER(?)";
       params.push(status);
     }
     if (studentId) {
-      query += " AND UPPER(student_id) = UPPER(?)";
+      query += " AND UPPER(ar.student_id) = UPPER(?)";
       params.push(studentId);
     }
+    if (course && course !== "All") {
+      query += " AND (UPPER(ar.course) = UPPER(?) OR UPPER(s.course) = UPPER(?))";
+      params.push(course, course);
+    }
+    if (branch && branch !== "All") {
+      query += " AND (UPPER(ar.branch) = UPPER(?) OR UPPER(s.branch) = UPPER(?))";
+      params.push(branch, branch);
+    }
+    if (year && year !== "All") {
+      query += " AND (UPPER(ar.academic_year) = UPPER(?) OR UPPER(s.year) = UPPER(?))";
+      params.push(year, year);
+    }
+    if (teacherId && teacherId !== "All") {
+      query += " AND UPPER(ar.teacher_id) = UPPER(?)";
+      params.push(teacherId);
+    }
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      query += " AND (ar.student_name LIKE ? OR ar.student_id LIKE ? OR ar.subject LIKE ? OR ar.subject_code LIKE ?)";
+      params.push(q, q, q, q);
+    }
 
-    query += " ORDER BY date DESC, time DESC";
+    query += " ORDER BY ar.date DESC, ar.time DESC";
 
     if (limit) {
       query += " LIMIT ?";
@@ -733,12 +1233,29 @@ function getAllAttendanceRecords(req, res) {
 
     const records = db.prepare(query).all(...params);
 
+    const presentCount = records.filter((r) => (r.status || "").toLowerCase() === "present").length;
+    const absentCount = records.filter((r) => (r.status || "").toLowerCase() === "absent").length;
+    const lateCount = records.filter((r) => (r.status || "").toLowerCase() === "late").length;
+    const faceCount = records.filter((r) => (r.method || "").toLowerCase().includes("face")).length;
+    const qrCount = records.filter((r) => (r.method || "").toLowerCase().includes("qr")).length;
+    const syncedCount = records.filter((r) => r.sheets_synced === 1).length;
+
     return res.json({
       success: true,
       count: records.length,
+      summary: {
+        total: records.length,
+        present: presentCount,
+        absent: absentCount,
+        late: lateCount,
+        faceCount,
+        qrCount,
+        syncedToSheets: syncedCount
+      },
       records
     });
   } catch (error) {
+    console.error("getAllAttendanceRecords error:", error);
     return res.status(500).json({ success: false, error: "Failed to query attendance records" });
   }
 }
@@ -780,8 +1297,48 @@ function exportAttendanceCSV(req, res) {
   }
 }
 
+/**
+ * Helper to log anti-proxy and attendance security events into SQLite
+ */
+function logSecurityEvent({ eventType, studentId, studentName, subjectCode, lectureName, method, status, riskLevel, details }) {
+  try {
+    const id = `SEC-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`;
+    const timestamp = `${getTodayDate()} ${getCurrentTimeFormatted()}`;
+    db.prepare(`
+      INSERT INTO security_audit_logs (id, event_type, student_id, student_name, subject_code, lecture_name, method, status, risk_level, details, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, eventType, studentId || null, studentName || null, subjectCode || null, lectureName || null, method, status, riskLevel || "Low", details, timestamp);
+  } catch (err) {
+    console.warn("Security audit log error:", err.message);
+  }
+}
+
+/**
+ * Get Anti-Proxy & Security Audit Logs (Admin Console)
+ */
+function getSecurityAuditLogs(req, res) {
+  try {
+    const logs = db.prepare("SELECT * FROM security_audit_logs ORDER BY created_at DESC LIMIT 60").all();
+    const stats = {
+      totalEvents: logs.length,
+      verifiedCount: logs.filter((l) => l.status === "VERIFIED").length,
+      blockedCount: logs.filter((l) => l.status === "BLOCKED").length,
+      flaggedCount: logs.filter((l) => l.status === "FLAGGED").length
+    };
+    return res.json({
+      success: true,
+      stats,
+      logs
+    });
+  } catch (error) {
+    console.error("getSecurityAuditLogs error:", error);
+    return res.status(500).json({ success: false, error: "Failed to fetch security audit logs" });
+  }
+}
+
 module.exports = {
   markFaceAttendance,
+  kioskIdentifyFace,
   markQRAttendance,
   getActiveSessions,
   createSession,
@@ -791,5 +1348,6 @@ module.exports = {
   getStudentAttendance,
   getAllAttendanceRecords,
   correctAttendanceRecord,
-  exportAttendanceCSV
+  exportAttendanceCSV,
+  getSecurityAuditLogs
 };

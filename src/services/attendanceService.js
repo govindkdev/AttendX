@@ -17,9 +17,114 @@ export const attendanceService = {
    */
   getStudentHistory(studentId = "STU-2026-001") {
     const state = loadState();
-    return state.attendanceHistory.filter(
-      (r) => r.studentId.toUpperCase() === studentId.toUpperCase()
+    return (state.attendanceHistory || []).filter(
+      (r) => r.studentId && r.studentId.toUpperCase() === studentId.toUpperCase()
     );
+  },
+
+  async fetchStudentHistoryAsync(studentId) {
+    if (!studentId) return [];
+    try {
+      const res = await api.get(`/api/attendance/student/${encodeURIComponent(studentId)}`);
+      if (res && res.success && Array.isArray(res.records)) {
+        return res.records.map((r) => ({
+          id: r.id,
+          studentId: r.student_id,
+          studentName: r.student_name,
+          date: r.date,
+          time: r.time,
+          subject: r.subject,
+          subjectCode: r.subject_code,
+          lectureName: r.lecture_name || r.subject,
+          teacherName: r.teacher_name,
+          course: r.course || r.student_course,
+          branch: r.branch || r.student_branch,
+          academicYear: r.academic_year || r.student_year,
+          method: r.method,
+          status: r.status,
+          geofenceVerified: Boolean(r.geofence_verified),
+          confidence: r.confidence,
+          room: r.room,
+          sheetsSynced: Boolean(r.sheets_synced),
+          sheetsSyncStatus: r.sheets_sync_status,
+          correctedBy: r.corrected_by,
+          correctionReason: r.correction_reason
+        }));
+      }
+    } catch (e) {
+      console.warn("fetchStudentHistoryAsync notice:", e.message);
+    }
+    return this.getStudentHistory(studentId);
+  },
+
+  /**
+   * Fetch full student attendance breakdown & stats from backend SQLite
+   */
+  async fetchStudentAttendanceAsync(studentId) {
+    if (!studentId) return null;
+    try {
+      const res = await api.get(`/api/attendance/student/${encodeURIComponent(studentId)}`);
+      if (res && res.success) {
+        return res;
+      }
+    } catch (e) {
+      console.warn("fetchStudentAttendanceAsync notice:", e.message);
+    }
+    return null;
+  },
+
+  /**
+   * Fetch all institutional attendance records with optional filters
+   */
+  async fetchAllRecordsAsync(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (filters.search) params.append("search", filters.search);
+      if (filters.course && filters.course !== "all" && filters.course !== "All") params.append("course", filters.course);
+      if (filters.branch && filters.branch !== "all" && filters.branch !== "All") params.append("branch", filters.branch);
+      if (filters.year && filters.year !== "all" && filters.year !== "All") params.append("year", filters.year);
+      if (filters.subjectCode && filters.subjectCode !== "all" && filters.subjectCode !== "All") params.append("subjectCode", filters.subjectCode);
+      if (filters.method && filters.method !== "all" && filters.method !== "All") params.append("method", filters.method);
+      if (filters.status && filters.status !== "all" && filters.status !== "All") params.append("status", filters.status);
+      if (filters.date) params.append("date", filters.date);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await api.get(`/api/attendance/records${qs}`);
+      if (res && res.success && Array.isArray(res.records)) {
+        return {
+          records: res.records.map((r) => ({
+            id: r.id,
+            studentId: r.student_id,
+            studentName: r.student_name,
+            date: r.date,
+            time: r.time,
+            subject: r.subject,
+            subjectCode: r.subject_code,
+            lectureName: r.lecture_name || r.subject,
+            course: r.course || r.student_course,
+            branch: r.branch || r.student_branch,
+            academicYear: r.academic_year || r.student_year,
+            teacherName: r.teacher_name,
+            teacherId: r.teacher_id,
+            method: r.method,
+            status: r.status,
+            confidence: r.confidence,
+            room: r.room,
+            geofenceVerified: Boolean(r.geofence_verified),
+            sheetsSynced: Boolean(r.sheets_synced),
+            sheetsSyncStatus: r.sheets_sync_status || (r.sheets_synced ? "SYNCED" : "QUEUED"),
+            correctedBy: r.corrected_by,
+            correctionReason: r.correction_reason,
+            correctedAt: r.corrected_at
+          })),
+          metrics: res.metrics || null,
+          count: res.count || 0
+        };
+      }
+    } catch (e) {
+      console.warn("fetchAllRecordsAsync notice:", e.message);
+    }
+    return { records: [], metrics: null, count: 0 };
   },
 
   /**
@@ -104,7 +209,7 @@ export const attendanceService = {
 
     // Add a notification for the student
     state.notifications.unshift({
-      id: "NOTIF-" + Date.now(),
+      id: `NOTIF-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       recipientRole: "student",
       recipientId: studentId,
       title: `Attendance Marked (${method})`,
@@ -194,7 +299,7 @@ export const attendanceService = {
 
     // Notify teacher
     state.notifications.unshift({
-      id: "NOTIF-" + Date.now(),
+      id: `NOTIF-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       recipientRole: "teacher",
       recipientId: teacherId,
       title: "New Attendance Session Live",

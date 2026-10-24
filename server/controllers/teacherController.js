@@ -3,14 +3,15 @@
 ATTENDX - TEACHER CONTROLLER
 =========================================================
 Faculty directory, Admin Teacher ID issuance,
-and subject assignment management.
+and academic course, branch, subject, and class assignments.
 =========================================================
 */
 
 const db = require("../config/database");
+const bcrypt = require("bcryptjs");
 
 /**
- * Get all teachers with assigned subjects
+ * Get all teachers with assigned subjects and academic scope
  */
 function getTeachers(req, res) {
   try {
@@ -40,14 +41,32 @@ function getTeachers(req, res) {
 
     const teachers = rawTeachers.map((t) => {
       let subjects = [];
-      try {
-        subjects = JSON.parse(t.subjects_json || "[]");
-      } catch (e) {
-        subjects = [];
-      }
+      let courses = [];
+      let branches = [];
+      let years = [];
+      let classes = [];
+
+      try { subjects = JSON.parse(t.subjects_json || "[]"); } catch (e) { subjects = []; }
+      try { courses = JSON.parse(t.assigned_courses_json || "[]"); } catch (e) { courses = []; }
+      try { branches = JSON.parse(t.assigned_branches_json || "[]"); } catch (e) { branches = []; }
+      try { years = JSON.parse(t.assigned_years_json || "[]"); } catch (e) { years = []; }
+      try { classes = JSON.parse(t.assigned_classes_json || "[]"); } catch (e) { classes = []; }
+
+      // Also get explicit assignments from teacher_assignments table
+      const assignments = db.prepare(`
+        SELECT subject_code, subject_name, class_code, course_code, branch_code, year_code
+        FROM teacher_assignments
+        WHERE UPPER(teacher_id) = UPPER(?)
+      `).all(t.teacher_id);
+
       return {
         ...t,
-        assignedSubjects: subjects
+        assignedSubjects: subjects,
+        assignedCourses: courses,
+        assignedBranches: branches,
+        assignedYears: years,
+        assignedClasses: classes,
+        assignments
       };
     });
 
@@ -63,11 +82,70 @@ function getTeachers(req, res) {
 }
 
 /**
+ * Get single teacher by ID
+ */
+function getTeacherById(req, res) {
+  try {
+    const { teacherId } = req.params;
+    const teacher = db.prepare("SELECT * FROM teachers WHERE UPPER(teacher_id) = UPPER(?)").get(teacherId);
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, error: "Teacher not found" });
+    }
+
+    let subjects = [];
+    let courses = [];
+    let branches = [];
+    let years = [];
+    let classes = [];
+
+    try { subjects = JSON.parse(teacher.subjects_json || "[]"); } catch (e) { subjects = []; }
+    try { courses = JSON.parse(teacher.assigned_courses_json || "[]"); } catch (e) { courses = []; }
+    try { branches = JSON.parse(teacher.assigned_branches_json || "[]"); } catch (e) { branches = []; }
+    try { years = JSON.parse(teacher.assigned_years_json || "[]"); } catch (e) { years = []; }
+    try { classes = JSON.parse(teacher.assigned_classes_json || "[]"); } catch (e) { classes = []; }
+
+    const assignments = db.prepare(`
+      SELECT subject_code, subject_name, class_code, course_code, branch_code, year_code
+      FROM teacher_assignments
+      WHERE UPPER(teacher_id) = UPPER(?)
+    `).all(teacher.teacher_id);
+
+    return res.json({
+      success: true,
+      data: {
+        ...teacher,
+        assignedSubjects: subjects,
+        assignedCourses: courses,
+        assignedBranches: branches,
+        assignedYears: years,
+        assignedClasses: classes,
+        assignments
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Failed to retrieve teacher profile" });
+  }
+}
+
+/**
  * Issue new Teacher ID (Admin only)
  */
 function issueTeacherId(req, res) {
   try {
-    const { teacherId, fullName, department, designation, email, phone, subjects } = req.body;
+    const {
+      teacherId,
+      fullName,
+      department,
+      designation,
+      email,
+      phone,
+      assignedCourses,
+      assignedBranches,
+      assignedYears,
+      assignedSubjects,
+      assignedClasses
+    } = req.body;
 
     if (!fullName || !department || !email) {
       return res.status(400).json({ success: false, error: "Teacher Name, Department, and Email are required." });
@@ -89,22 +167,102 @@ function issueTeacherId(req, res) {
       return res.status(400).json({ success: false, error: `Teacher ID "${assignedId}" already exists.` });
     }
 
-    const subjectsJson = JSON.stringify(subjects || [
-      { code: "CS101", name: "Introduction to Computing", room: "LT-101" }
-    ]);
+    // Prepare subjects array
+    let subjectsList = Array.isArray(assignedSubjects) ? assignedSubjects : [];
+    if (subjectsList.length === 0) {
+      // Default to department subjects or initial
+      subjectsList = [
+        { code: "CS101", name: "Introduction to Computing", room: "LT-101" }
+      ];
+    } else {
+      // Normalize to { code, name, room }
+      subjectsList = subjectsList.map((s) => {
+        if (typeof s === "string") return { code: s, name: s, room: "LT-101" };
+        return {
+          code: s.code || s.subject_code || s,
+          name: s.name || s.subject_name || s.code,
+          room: s.room || s.room_default || "LT-101"
+        };
+      });
+    }
+
+    const coursesList = Array.isArray(assignedCourses) ? assignedCourses : ["B.Tech"];
+    const branchesList = Array.isArray(assignedBranches) ? assignedBranches : [department];
+    const yearsList = Array.isArray(assignedYears) ? assignedYears : ["1st Year", "4th Year"];
+    const classesList = Array.isArray(assignedClasses) ? assignedClasses : ["CS-4A"];
+
+    const subjectsJson = JSON.stringify(subjectsList);
+    const coursesJson = JSON.stringify(coursesList);
+    const branchesJson = JSON.stringify(branchesList);
+    const yearsJson = JSON.stringify(yearsList);
+    const classesJson = JSON.stringify(classesList);
 
     db.prepare(`
-      INSERT INTO teachers (teacher_id, full_name, department, designation, email, phone, subjects_json, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')
+      INSERT INTO teachers (
+        teacher_id, full_name, department, designation, email, phone,
+        subjects_json, assigned_courses_json, assigned_branches_json,
+        assigned_years_json, assigned_classes_json, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
     `).run(
       assignedId, fullName, department, designation || "Assistant Professor",
-      email, phone || "", subjectsJson
+      email, phone || "", subjectsJson, coursesJson, branchesJson, yearsJson, classesJson
     );
+
+    // Persist assignments to teacher_assignments table
+    const insertAssign = db.prepare(`
+      INSERT OR IGNORE INTO teacher_assignments (
+        id, teacher_id, subject_code, subject_name, class_code, course_code, branch_code, year_code
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const sub of subjectsList) {
+      for (const cls of classesList) {
+        const assignId = `TA-${assignedId}-${sub.code}-${cls}-${Date.now().toString().slice(-4)}`;
+        insertAssign.run(
+          assignId,
+          assignedId,
+          sub.code,
+          sub.name,
+          cls,
+          coursesList[0] || "",
+          branchesList[0] || department,
+          yearsList[0] || ""
+        );
+      }
+    }
+
+    // Create login account in users table
+    const defaultPassword = req.body.password || "Teacher@123";
+    const hash = bcrypt.hashSync(defaultPassword, 10);
+    db.prepare(`
+      INSERT INTO users (identifier, email, password_hash, role)
+      VALUES (?, ?, ?, 'teacher')
+      ON CONFLICT(identifier) DO UPDATE SET
+        email = excluded.email,
+        password_hash = excluded.password_hash,
+        role = 'teacher'
+    `).run(assignedId, email, hash);
 
     return res.status(201).json({
       success: true,
-      message: `Teacher ID "${assignedId}" officially authorized and issued.`,
-      teacherId: assignedId
+      message: `Teacher ID "${assignedId}" officially authorized and issued for ${fullName}.`,
+      teacherId: assignedId,
+      teacher: {
+        teacher_id: assignedId,
+        teacherId: assignedId,
+        full_name: fullName,
+        fullName,
+        department,
+        designation: designation || "Assistant Professor",
+        email,
+        phone: phone || "",
+        assignedCourses: coursesList,
+        assignedBranches: branchesList,
+        assignedYears: yearsList,
+        assignedSubjects: subjectsList,
+        assignedClasses: classesList,
+        status: "Active"
+      }
     });
   } catch (error) {
     console.error("issueTeacherId error:", error);
@@ -139,6 +297,7 @@ function toggleTeacherStatus(req, res) {
 
 module.exports = {
   getTeachers,
+  getTeacherById,
   issueTeacherId,
   toggleTeacherStatus
 };

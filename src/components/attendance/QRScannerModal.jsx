@@ -20,6 +20,7 @@ import { qrService } from "../../services/qrService";
 import { attendanceService } from "../../services/attendanceService";
 import { userService } from "../../services/userService";
 import { api } from "../../services/api";
+import { voiceAnnouncer } from "../../utils/voiceAnnouncer";
 
 export default function QRScannerModal({
   isOpen,
@@ -189,32 +190,108 @@ export default function QRScannerModal({
     processAttendance(activeSessions[0]);
   };
 
-  const processAttendance = (session) => {
+  const processAttendance = async (session) => {
     const studentId = currentUser?.id || "STU-2026-001";
     const studentName = currentUser?.name || "Govind Kushwaha";
-    const geofence = userService.getCampusGeofence();
-    const geofenceOk = geofence.simulationMode !== "outside";
 
-    const result = attendanceService.markAttendance({
-      studentId,
-      studentName,
-      subject: session.subjectName,
-      subjectCode: session.subjectCode,
-      method: "QR Backup",
-      geofenceVerified: geofenceOk,
-      confidence: "QR Token Validated",
-      room: session.room,
-      status: "Present"
-    });
+    setStatusMessage("Acquiring GPS location & validating campus perimeter with server...");
+    setStatusType("info");
 
-    if (result.success) {
-      setStatusMessage(`✓ Attendance Verified! Successfully recorded for ${session.subjectName}.`);
-      setStatusType("success");
-      setScannedSession(session);
-      if (onAttendanceMarked) onAttendanceMarked();
-    } else {
-      setStatusMessage(result.error);
-      setStatusType("error");
+    // 1. Capture live GPS coordinates from mobile/browser
+    let coords = { latitude: 28.5355, longitude: 77.3910, isLive: false };
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 10000
+          });
+        });
+        coords = {
+          latitude: parseFloat(pos.coords.latitude.toFixed(6)),
+          longitude: parseFloat(pos.coords.longitude.toFixed(6)),
+          isLive: true
+        };
+      } catch (geoErr) {
+        console.warn("GPS location permission/timeout:", geoErr.message);
+        // Fallback to campus center if simulator mode or permission blocked
+        const gf = userService.getCampusGeofence();
+        coords = {
+          latitude: gf.simulationMode === "outside" ? 28.6500 : (gf.latitude || 28.5355),
+          longitude: gf.simulationMode === "outside" ? 77.2000 : (gf.longitude || 77.3910),
+          isLive: false
+        };
+      }
+    }
+
+    // 2. Submit to backend API for Haversine geofence & lecture token validation
+    try {
+      const serverRes = await api.post("/api/attendance/mark-qr", {
+        studentId,
+        sessionCode: session.sessionCode || session.code,
+        qrData: session.token || JSON.stringify(session),
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      });
+
+      if (serverRes && serverRes.success) {
+        // Attendance successfully verified by backend!
+        attendanceService.markAttendance({
+          studentId,
+          studentName,
+          subject: session.subjectName,
+          subjectCode: session.subjectCode,
+          method: "QR Scan",
+          geofenceVerified: true,
+          confidence: "Cryptographic Nonce Verified",
+          room: session.room,
+          status: "Present"
+        });
+
+        // Trigger voice announcement: "Your attendance has been recorded."
+        voiceAnnouncer.speakAttendanceRecorded({
+          key: `${studentId}_${session.sessionCode || session.code || session.subjectCode}`,
+          source: "QR_SCAN"
+        });
+
+        setStatusMessage(`✓ Attendance Verified! Successfully recorded for ${session.subjectName}.`);
+        setStatusType("success");
+        setScannedSession(session);
+        if (onAttendanceMarked) onAttendanceMarked();
+      } else {
+        // Server validation failed (Geofence breach, Expired QR, Duplicate check-in, etc.)
+        const errorMsg = serverRes?.error || "Attendance verification failed.";
+        setStatusMessage(errorMsg);
+        setStatusType("error");
+      }
+    } catch (netErr) {
+      // Offline fallback
+      const result = attendanceService.markAttendance({
+        studentId,
+        studentName,
+        subject: session.subjectName,
+        subjectCode: session.subjectCode,
+        method: "QR Backup",
+        geofenceVerified: true,
+        confidence: "QR Token Validated (Offline)",
+        room: session.room,
+        status: "Present"
+      });
+
+      if (result.success) {
+        voiceAnnouncer.speakAttendanceRecorded({
+          key: `${studentId}_${session.sessionCode || session.code || session.subjectCode}`,
+          source: "QR_BACKUP"
+        });
+        setStatusMessage(`✓ Attendance Recorded: ${session.subjectName}`);
+        setStatusType("success");
+        setScannedSession(session);
+        if (onAttendanceMarked) onAttendanceMarked();
+      } else {
+        setStatusMessage(result.error);
+        setStatusType("error");
+      }
     }
   };
 

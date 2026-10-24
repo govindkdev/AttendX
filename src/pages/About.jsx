@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Footer from "../components/common/Footer";
 import "../style/About.css";
 
 /*
@@ -759,25 +760,20 @@ function About() {
               href="/how-it-works"
               className="about-final-button"
             >
-
               How It Works
-
               <Icon
                 name="arrow"
                 size={15}
               />
-
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Footer */}
+      <Footer />
     </div>
   );
 }
-
 
 export default About;

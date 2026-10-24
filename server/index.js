@@ -30,6 +30,8 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const academicRoutes = require("./routes/academicRoutes");
+const sheetsRoutes = require("./routes/sheetsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -60,6 +62,8 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/academic", academicRoutes);
+app.use("/api/sheets", sheetsRoutes);
 
 // System Healthcheck Endpoint
 app.get("/api/health", (req, res) => {

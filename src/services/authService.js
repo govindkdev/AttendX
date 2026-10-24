@@ -29,7 +29,7 @@ export const authService = {
    * @param {string} identifier - Student ID, Teacher ID, Admin ID, or Email
    * @param {string} password
    */
-  login(role, identifier, password) {
+  async login(role, identifier, password) {
     const cleanId = (identifier || "").trim().toLowerCase();
     const cleanPass = (password || "").trim();
     const state = loadState();
@@ -45,18 +45,56 @@ export const authService = {
     }
 
     // Fullstack: Authenticate with Express Backend & obtain JWT Token
-    api.post("/api/auth/login", {
-      identifier: cleanId,
-      password: cleanPass,
-      role
-    }).then((res) => {
-      if (res && res.token) {
-        setAuthToken(res.token);
-        console.log(`[AttendX Fullstack] JWT authenticated for ${cleanId} (${role}). Token secured in localStorage.`);
+    try {
+      const apiRes = await api.post("/api/auth/login", {
+        identifier: cleanId,
+        password: cleanPass,
+        role
+      });
+
+      if (apiRes && apiRes.success && apiRes.user) {
+        if (apiRes.token) setAuthToken(apiRes.token);
+        const u = apiRes.user;
+        const p = u.profile || {};
+        const userSession = {
+          role: u.role,
+          id: p.student_id || p.teacher_id || p.admin_id || u.identifier,
+          name: p.full_name || u.name || u.identifier,
+          email: p.email || u.email,
+          course: p.course || "",
+          branch: p.branch || p.department || "",
+          year: p.year || "",
+          rollNumber: p.roll_number || "",
+          phone: p.phone || "",
+          faceEnrolled: Boolean(p.face_enrolled),
+          overallAttendance: p.overall_attendance ?? (role === "student" ? 0.0 : undefined),
+          assignedSubjects: p.assignedSubjects || [],
+          assignedCourses: p.assignedCourses || [],
+          assignedBranches: p.assignedBranches || [],
+          assignedYears: p.assignedYears || [],
+          assignedClasses: p.assignedClasses || [],
+          department: p.department || "",
+          designation: p.designation || "",
+          loginTime: new Date().toISOString()
+        };
+
+        this.setSession(userSession);
+        return {
+          success: true,
+          user: userSession,
+          redirect: role === "student" ? "/student-dashboard" : role === "teacher" ? "/teacher-dashboard" : "/admin-dashboard"
+        };
       }
-    }).catch((err) => {
-      console.warn("[AttendX Fullstack] Backend login sync notification:", err.message);
-    });
+
+      if (apiRes && !apiRes.success && !apiRes.isOffline) {
+        return {
+          success: false,
+          error: apiRes.error || "Invalid AttendX credentials or role mismatch."
+        };
+      }
+    } catch (apiErr) {
+      console.warn("[AttendX Auth] Backend API login notice:", apiErr.message);
+    }
 
     // 1. STUDENT LOGIN
     if (role === "student") {
@@ -185,7 +223,7 @@ export const authService = {
    * Register a new student
    * Validates that Student ID was pre-issued or pre-authorized by Institute Admin
    */
-  registerStudent(formData) {
+  async registerStudent(formData) {
     const state = loadState();
     const cleanId = (formData.studentId || "").trim().toUpperCase();
 
@@ -232,21 +270,34 @@ export const authService = {
     saveState(state);
 
     // Fullstack: Sync student registration to backend SQLite
-    api.post("/api/auth/register", {
-      role: "student",
-      studentId: cleanId,
-      fullName: formData.fullName.trim(),
-      course: formData.course,
-      branch: formData.branch,
-      year: formData.year,
-      phone: formData.phone,
-      email: formData.email.trim(),
-      parentName: formData.parentName,
-      parentPhone: formData.parentPhone,
-      parentEmail: formData.parentEmail || "",
-      address: formData.address,
-      password: formData.password
-    }).catch((e) => console.warn("[AttendX Fullstack] Student registration sync:", e.message));
+    try {
+      const res = await api.post("/api/auth/register", {
+        role: "student",
+        studentId: cleanId,
+        fullName: formData.fullName.trim(),
+        course: formData.course,
+        branch: formData.branch,
+        year: formData.year,
+        phone: formData.phone,
+        email: formData.email.trim(),
+        parentName: formData.parentName,
+        parentPhone: formData.parentPhone,
+        parentEmail: formData.parentEmail || "",
+        address: formData.address,
+        password: formData.password
+      });
+
+      if (res && res.success) {
+        return {
+          success: true,
+          message: res.message || `Account created successfully for ${authorizedSlot.fullName} (${cleanId}). You may now log in.`
+        };
+      } else if (res && !res.success && res.error) {
+        return { success: false, error: res.error };
+      }
+    } catch (e) {
+      console.warn("[AttendX Fullstack] Student registration sync:", e.message);
+    }
 
     return {
       success: true,

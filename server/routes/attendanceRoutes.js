@@ -4,6 +4,7 @@ const attendanceController = require("../controllers/attendanceController");
 
 // Attendance submission methods
 router.post("/mark-face", attendanceController.markFaceAttendance);
+router.post("/kiosk-identify", attendanceController.kioskIdentifyFace);
 router.post("/mark-qr", attendanceController.markQRAttendance);
 
 // Sessions
@@ -13,9 +14,10 @@ router.post("/sessions/:sessionId/regenerate", attendanceController.regenerateSe
 router.get("/sessions/:sessionId/attendees", attendanceController.getSessionAttendees);
 router.patch("/sessions/:sessionId/close", attendanceController.closeSession);
 
-// Records and reporting
+// Records, audit and reporting
 router.get("/student/:studentId", attendanceController.getStudentAttendance);
 router.get("/records", attendanceController.getAllAttendanceRecords);
+router.get("/anti-proxy-logs", attendanceController.getSecurityAuditLogs);
 router.patch("/records/:recordId/correct", attendanceController.correctAttendanceRecord);
 router.get("/export/csv", attendanceController.exportAttendanceCSV);
 

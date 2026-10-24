@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Footer from "../components/common/Footer";
 import "../style/Security.css";
 
 /*
@@ -1567,28 +1568,23 @@ function Security() {
 
 
             <a
-              href="/contact"
+              href="/login"
               className="security-final-button"
             >
-
-              Get Started
-
+              Access Portals
               <Icon
                 name="arrow"
                 size={15}
               />
-
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Footer */}
+      <Footer />
     </div>
   );
 }
-
 
 export default Security;

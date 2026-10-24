@@ -16,16 +16,46 @@ export const userService = {
     return loadState().students;
   },
 
-  issueStudentId(data) {
+  async fetchStudentsAsync() {
+    try {
+      const res = await api.get("/api/students");
+      if (res && res.success && Array.isArray(res.data)) {
+        const state = loadState();
+        state.students = res.data.map((s) => ({
+          studentId: s.student_id || s.studentId,
+          fullName: s.full_name || s.fullName,
+          course: s.course,
+          branch: s.branch,
+          year: s.year,
+          rollNumber: s.roll_number || s.rollNumber,
+          email: s.email,
+          phone: s.phone,
+          status: s.status,
+          faceEnrolled: Boolean(s.face_enrolled ?? s.faceEnrolled),
+          overallAttendance: s.overall_attendance ?? s.overallAttendance ?? 0.0,
+          assignedSubjects: s.assignedSubjects || []
+        }));
+        saveState(state);
+        return state.students;
+      }
+    } catch (e) {
+      console.warn("fetchStudentsAsync notice:", e.message);
+    }
+    return this.getStudents();
+  },
+
+  async issueStudentId(data) {
     const state = loadState();
     // Auto-generate next Student ID if not provided
     const nextNum = state.students.length + 1;
-    const studentId = data.studentId || `STU-2026-${String(nextNum).padStart(3, "0")}`;
+    const studentId = data.studentId ? data.studentId.trim().toUpperCase() : `STU-2026-${String(nextNum).padStart(3, "0")}`;
 
     const exists = state.students.some((s) => s.studentId === studentId);
     if (exists) {
       return { success: false, error: `Student ID ${studentId} is already issued.` };
     }
+
+    const assignedSubjects = Array.isArray(data.assignedSubjects) ? data.assignedSubjects : [];
 
     const newStudent = {
       studentId,
@@ -35,39 +65,52 @@ export const userService = {
       year: data.year || "1st Year",
       rollNumber: data.rollNumber || `2100970100${String(nextNum).padStart(3, "0")}`,
       email: data.email || `${studentId.toLowerCase()}@attendx.com`,
-      phone: data.phone || "9876500000",
-      parentName: data.parentName || "Parent",
-      parentPhone: data.parentPhone || "9876500001",
+      phone: data.phone || "",
+      parentName: data.parentName || "",
+      parentPhone: data.parentPhone || "",
       parentEmail: data.parentEmail || "",
-      address: data.address || "Campus Hostel Block",
+      address: data.address || "",
       status: "Active",
       faceEnrolled: false,
       issuedDate: new Date().toISOString().split("T")[0],
-      overallAttendance: 100
+      overallAttendance: 0.0,
+      assignedSubjects
     };
 
     state.students.unshift(newStudent);
     saveState(state);
 
     // Fullstack: Persist to Backend SQLite
-    api.post("/api/students/issue", {
-      studentId,
-      fullName: data.fullName,
-      course: newStudent.course,
-      branch: newStudent.branch,
-      year: newStudent.year,
-      rollNumber: newStudent.rollNumber,
-      email: newStudent.email,
-      phone: newStudent.phone,
-      parentName: newStudent.parentName,
-      parentPhone: newStudent.parentPhone,
-      address: newStudent.address
-    }).catch((e) => console.warn("[AttendX Fullstack] Student ID issuance backend sync:", e.message));
+    try {
+      const apiRes = await api.post("/api/students/issue", {
+        studentId,
+        fullName: data.fullName,
+        course: newStudent.course,
+        branch: newStudent.branch,
+        year: newStudent.year,
+        rollNumber: newStudent.rollNumber,
+        email: newStudent.email,
+        phone: newStudent.phone,
+        password: data.password || "Student@123",
+        parentName: newStudent.parentName,
+        parentPhone: newStudent.parentPhone,
+        address: newStudent.address,
+        assignedSubjects
+      });
+
+      if (apiRes && !apiRes.success && !apiRes.isOffline) {
+        state.students = state.students.filter((s) => s.studentId !== studentId);
+        saveState(state);
+        return { success: false, error: apiRes.error || "Failed to persist Student ID to database." };
+      }
+    } catch (e) {
+      console.warn("[AttendX Fullstack] Student ID issuance backend sync:", e.message);
+    }
 
     return {
       success: true,
       student: newStudent,
-      message: `Authorized Student ID ${studentId} issued for ${data.fullName}.`
+      message: `Official Student ID ${studentId} issued for ${data.fullName}.`
     };
   },
 
@@ -89,27 +132,34 @@ export const userService = {
     };
   },
 
-  // Face Biometric Enrollment by Admin
-  enrollStudentFace(studentId, { photoData = null, qualityScore = "99.4%" } = {}) {
+  // Face Biometric Enrollment by Admin (with 20-30 distinct multi-angle samples)
+  enrollStudentFace(studentId, { photoData = null, samples = [], centroidVector = null, sampleCount = 25, qualityScore = "99.4%", angleCoverage = "" } = {}) {
     const state = loadState();
     const student = state.students.find((s) => s.studentId === studentId);
     if (!student) return { success: false, error: "Student record not found." };
 
+    const actualCount = samples.length > 0 ? samples.length : sampleCount;
     student.faceEnrolled = true;
     student.faceEnrolledDate = new Date().toISOString().split("T")[0];
     student.faceTemplateId = "FT-2026-" + Math.floor(1000 + Math.random() * 9000);
     student.faceQualityScore = qualityScore;
+    student.faceSampleCount = actualCount;
+    if (centroidVector && Array.isArray(centroidVector)) {
+      student.centroidVector = centroidVector;
+    }
     if (photoData) {
       student.facePhotoUrl = photoData;
+    } else if (samples.length > 0) {
+      student.facePhotoUrl = typeof samples[0] === "string" ? samples[0] : (samples[0].photo || "");
     }
 
     // Add notification for the student
     state.notifications.unshift({
-      id: "NOTIF-" + Date.now(),
+      id: `NOTIF-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       recipientRole: "student",
       recipientId: studentId,
       title: "Biometric Face Enrolled by Admin",
-      message: `Your facial biometric template (${student.faceTemplateId}) has been registered in the database by Institute Admin. You can now mark attendance using Face AI.`,
+      message: `Your facial biometric template (${student.faceTemplateId}) calibrated from ${actualCount} samples has been registered in the database by Institute Admin. You can now mark attendance using Face AI.`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       read: false,
       type: "success"
@@ -117,19 +167,23 @@ export const userService = {
 
     saveState(state);
 
-    // Fullstack: Enroll in Express & calculate 512-d vector in SQLite database
+    // Fullstack: Enroll in Express & synthesize 512-d centroid vector in SQLite database
     api.post("/api/students/biometric-enroll", {
       studentId,
-      facePhotoBase64: photoData || "attendx_captured_snapshot_payload",
-      qualityScore
+      facePhotoBase64: student.facePhotoUrl || "attendx_captured_snapshot_payload",
+      centroidVector,
+      samples,
+      sampleCount: actualCount,
+      qualityScore,
+      angleCoverage
     }).then((res) => {
-      console.log(`[AttendX Fullstack] Biometric face vector enrolled in SQLite for ${studentId}:`, res);
+      console.log(`[AttendX Fullstack] Biometric face centroid vector enrolled in SQLite for ${studentId}:`, res);
     }).catch((e) => console.warn("[AttendX Fullstack] Face biometric enrollment backend sync:", e.message));
 
     return {
       success: true,
       student,
-      message: `Biometric face data successfully registered in database for ${student.fullName} (${student.studentId}). Template: ${student.faceTemplateId}.`
+      message: `Biometric face data successfully registered from ${actualCount} samples for ${student.fullName} (${student.studentId}). Template: ${student.faceTemplateId}.`
     };
   },
 
@@ -159,15 +213,50 @@ export const userService = {
     return loadState().teachers;
   },
 
-  issueTeacherId(data) {
+  async fetchTeachersAsync() {
+    try {
+      const res = await api.get("/api/teachers");
+      if (res && res.success && Array.isArray(res.data)) {
+        const state = loadState();
+        state.teachers = res.data.map((t) => ({
+          teacherId: t.teacher_id || t.teacherId,
+          fullName: t.full_name || t.fullName,
+          department: t.department,
+          designation: t.designation,
+          email: t.email,
+          phone: t.phone,
+          status: t.status,
+          subjects: t.assignedSubjects || t.subjects || [],
+          assignedSubjects: t.assignedSubjects || t.subjects || [],
+          assignedCourses: t.assignedCourses || [],
+          assignedBranches: t.assignedBranches || [],
+          assignedYears: t.assignedYears || [],
+          assignedClasses: t.assignedClasses || []
+        }));
+        saveState(state);
+        return state.teachers;
+      }
+    } catch (e) {
+      console.warn("fetchTeachersAsync notice:", e.message);
+    }
+    return this.getTeachers();
+  },
+
+  async issueTeacherId(data) {
     const state = loadState();
     const nextNum = state.teachers.length + 1;
-    const teacherId = data.teacherId || `TCH-2026-${String(nextNum).padStart(3, "0")}`;
+    const teacherId = data.teacherId ? data.teacherId.trim().toUpperCase() : `TCH-2026-${String(nextNum).padStart(3, "0")}`;
 
     const exists = state.teachers.some((t) => t.teacherId === teacherId);
     if (exists) {
       return { success: false, error: `Teacher ID ${teacherId} already exists.` };
     }
+
+    const assignedCourses = Array.isArray(data.assignedCourses) ? data.assignedCourses : ["B.Tech"];
+    const assignedBranches = Array.isArray(data.assignedBranches) ? data.assignedBranches : [data.department || "Computer Science & Engineering"];
+    const assignedYears = Array.isArray(data.assignedYears) ? data.assignedYears : ["1st Year", "4th Year"];
+    const assignedClasses = Array.isArray(data.assignedClasses) ? data.assignedClasses : ["CS-4A"];
+    const assignedSubjects = Array.isArray(data.assignedSubjects) ? data.assignedSubjects : (data.subjects || []);
 
     const newTeacher = {
       teacherId,
@@ -175,8 +264,13 @@ export const userService = {
       department: data.department || "Computer Science & Engineering",
       designation: data.designation || "Assistant Professor",
       email: data.email || `${teacherId.toLowerCase()}@attendx.com`,
-      phone: data.phone || "9876599999",
-      subjects: data.subjects || [{ code: "CS101", name: "Intro to Computing", room: "LT-101" }],
+      phone: data.phone || "",
+      subjects: assignedSubjects,
+      assignedSubjects,
+      assignedCourses,
+      assignedBranches,
+      assignedYears,
+      assignedClasses,
       status: "Active",
       issuedDate: new Date().toISOString().split("T")[0]
     };
@@ -185,20 +279,35 @@ export const userService = {
     saveState(state);
 
     // Fullstack: Sync to backend SQLite
-    api.post("/api/teachers/issue", {
-      teacherId,
-      fullName: data.fullName,
-      department: newTeacher.department,
-      designation: newTeacher.designation,
-      email: newTeacher.email,
-      phone: newTeacher.phone,
-      subjects: newTeacher.subjects
-    }).catch((e) => console.warn("Backend teacher issue sync:", e.message));
+    try {
+      const apiRes = await api.post("/api/teachers/issue", {
+        teacherId,
+        fullName: data.fullName,
+        department: newTeacher.department,
+        designation: newTeacher.designation,
+        email: newTeacher.email,
+        phone: newTeacher.phone,
+        password: data.password || "Teacher@123",
+        assignedCourses,
+        assignedBranches,
+        assignedYears,
+        assignedSubjects,
+        assignedClasses
+      });
+
+      if (apiRes && !apiRes.success && !apiRes.isOffline) {
+        state.teachers = state.teachers.filter((t) => t.teacherId !== teacherId);
+        saveState(state);
+        return { success: false, error: apiRes.error || "Failed to persist Teacher ID to database." };
+      }
+    } catch (e) {
+      console.warn("Backend teacher issue sync:", e.message);
+    }
 
     return {
       success: true,
       teacher: newTeacher,
-      message: `Official Teacher ID ${teacherId} issued to ${data.fullName}.`
+      message: `Official Teacher ID ${teacherId} issued for ${data.fullName}.`
     };
   },
 

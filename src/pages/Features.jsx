@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Footer from "../components/common/Footer";
 import "../style/Features.css";
 
 /*
@@ -873,25 +874,20 @@ function Features() {
               href="/how-it-works"
               className="features-final-button"
             >
-
               How It Works
-
               <Icon
                 name="arrow"
                 size={15}
               />
-
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Footer */}
+      <Footer />
     </div>
   );
 }
-
 
 export default Features;

@@ -17,6 +17,7 @@ import { authService } from "../services/authService";
 import { attendanceService } from "../services/attendanceService";
 import { userService } from "../services/userService";
 import { qrService } from "../services/qrService";
+import api from "../services/api";
 import "../styles/dashboard.css";
 
 export default function TeacherDashboard() {
@@ -113,21 +114,45 @@ export default function TeacherDashboard() {
   };
 
   useEffect(() => {
-    const user = authService.getCurrentUser() || {
-      role: "teacher",
-      id: "TCH-2026-001",
-      name: "Dr. Rajesh Sharma",
-      email: "teacher@attendx.com",
-      department: "Computer Science & Engineering",
-      designation: "Professor & HOD",
-      subjects: [
-        { code: "CS401", name: "Data Structures & Algorithms", room: "LT-102" },
-        { code: "CS402", name: "Machine Learning & AI", room: "Lab 304" },
-        { code: "CS403", name: "Cloud Computing & DevOps", room: "LT-201" }
-      ]
-    };
+    const user = authService.getCurrentUser();
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
     setCurrentTeacher(user);
     refreshData(user.id);
+
+    // Fetch genuine profile & academic assignments from backend SQLite
+    api.get(`/api/teachers/${user.id}`).then((res) => {
+      if (res && res.success && res.data) {
+        const t = res.data;
+        const subs = t.assignedSubjects || t.subjects || [];
+        const classes = t.assignedClasses || ["CS-4A"];
+
+        setCurrentTeacher((prev) => ({
+          ...prev,
+          ...t,
+          id: t.teacher_id || prev?.id || user.id,
+          name: t.full_name || prev?.name,
+          department: t.department,
+          designation: t.designation,
+          subjects: subs,
+          assignedSubjects: subs,
+          assignedCourses: t.assignedCourses || [],
+          assignedBranches: t.assignedBranches || [],
+          assignedYears: t.assignedYears || [],
+          assignedClasses: classes,
+          assignments: t.assignments || []
+        }));
+
+        if (subs.length > 0) {
+          setSelectedSubject(subs[0].code);
+        }
+        if (classes.length > 0) {
+          setSelectedClass(classes[0]);
+        }
+      }
+    }).catch((e) => console.warn("Teacher profile sync notice:", e.message));
   }, []);
 
   const handleLogout = () => {
@@ -136,10 +161,11 @@ export default function TeacherDashboard() {
   };
 
   const handleCreateSession = async () => {
-    const subjectObj = (currentTeacher?.subjects || []).find((s) => s.code === selectedSubject) || {
-      code: "CS402",
-      name: "Machine Learning & AI",
-      room: "Lab 304"
+    const subs = currentTeacher?.subjects || currentTeacher?.assignedSubjects || [];
+    const subjectObj = subs.find((s) => s.code === selectedSubject) || subs[0] || {
+      code: "CS401",
+      name: "Data Structures & Algorithms",
+      room: "LT-102"
     };
 
     const duration = Number(sessionDuration) || 15;
@@ -244,9 +270,11 @@ export default function TeacherDashboard() {
       <aside className={`attendx-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <a href="/teacher-dashboard" className="brand-link">
-            <div className="brand-symbol" style={{ background: "linear-gradient(135deg, #5156E4 0%, #8C90FF 100%)" }}>
-              T
-            </div>
+            <img
+              src="/assets/attendx-logo.png"
+              alt="AttendX Logo"
+              style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }}
+            />
             <div className="brand-meta">
               <h2>AttendX</h2>
               <span className="brand-role-badge teacher">Teacher Portal</span>
@@ -451,33 +479,43 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-                  {(currentTeacher?.subjects || []).map((subj) => (
-                    <div key={subj.code} style={{
-                      border: "1px solid var(--attendx-border)",
-                      borderRadius: "var(--radius-lg)",
-                      padding: 18,
-                      background: "var(--attendx-surface-subtle)"
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span className="method-tag">{subj.code}</span>
-                        <span className="status-pill present">Room: {subj.room}</span>
+                  {(currentTeacher?.subjects || []).length > 0 ? (
+                    (currentTeacher?.subjects || []).map((subj) => (
+                      <div key={subj.code} style={{
+                        border: "1px solid var(--attendx-border)",
+                        borderRadius: "var(--radius-lg)",
+                        padding: 18,
+                        background: "var(--attendx-surface-subtle)"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                          <span className="method-tag">{subj.code}</span>
+                          <span className="status-pill present">Room: {subj.room || "LT-101"}</span>
+                        </div>
+                        <h4 style={{ margin: "0 0 6px", fontSize: 16 }}>{subj.name}</h4>
+                        <p style={{ fontSize: 12, color: "var(--attendx-text-muted)", margin: "0 0 14px" }}>
+                          Classes: {(currentTeacher?.assignedClasses || ["CS-4A"]).join(", ")}
+                        </p>
+                        <button
+                          className="btn-primary"
+                          style={{ fontSize: 12, padding: "6px 14px", width: "100%" }}
+                          onClick={() => {
+                            setSelectedSubject(subj.code);
+                            setActiveTab("session");
+                          }}
+                        >
+                          Launch Attendance Session
+                        </button>
                       </div>
-                      <h4 style={{ margin: "0 0 6px", fontSize: 16 }}>{subj.name}</h4>
-                      <p style={{ fontSize: 12, color: "var(--attendx-text-muted)", margin: "0 0 14px" }}>
-                        Enrolled: 45 Students • Avg Attendance: 88%
-                      </p>
-                      <button
-                        className="btn-primary"
-                        style={{ fontSize: 12, padding: "6px 14px", width: "100%" }}
-                        onClick={() => {
-                          setSelectedSubject(subj.code);
-                          setActiveTab("session");
-                        }}
-                      >
-                        Launch Attendance Session
-                      </button>
+                    ))
+                  ) : (
+                    <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "36px 16px", color: "var(--attendx-text-muted)" }}>
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>📚</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--attendx-navy)" }}>No subjects assigned yet</div>
+                      <div style={{ fontSize: 12, color: "var(--attendx-text-muted)", marginTop: 4 }}>
+                        Your faculty profile has not been assigned any subjects yet. Contact the Institute Administrator.
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </>
@@ -544,10 +582,12 @@ export default function TeacherDashboard() {
                           onChange={(e) => setSelectedClass(e.target.value)}
                           style={{ width: "100%", padding: 10, borderRadius: "var(--radius-md)", border: "1px solid var(--attendx-border)", background: "#fff" }}
                         >
-                          <option value="CS-4A (Final Year)">CS-4A (Final Year)</option>
-                          <option value="CS-4B (Final Year)">CS-4B (Final Year)</option>
-                          <option value="CS-3A (3rd Year)">CS-3A (3rd Year)</option>
-                          <option value="CS-2A (2nd Year)">CS-2A (2nd Year)</option>
+                          {(currentTeacher?.assignedClasses && currentTeacher.assignedClasses.length > 0
+                            ? currentTeacher.assignedClasses
+                            : ["CS-4A"]
+                          ).map((cls) => (
+                            <option key={cls} value={cls}>{cls}</option>
+                          ))}
                         </select>
                       </div>
 

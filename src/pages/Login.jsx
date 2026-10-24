@@ -236,7 +236,7 @@ export default function Login() {
      LOGIN FUNCTION
   ===================================================== */
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
 
     setMessage("");
@@ -279,7 +279,7 @@ export default function Login() {
     ATTENDX MULTI-ROLE AUTHENTICATION (DEMO)
     ===================================================
     */
-    const result = authService.login(role, email, password);
+    const result = await authService.login(role, email, password);
 
     if (result.success) {
       if (remember && role === "student") {
@@ -2013,23 +2013,20 @@ export default function Login() {
           href="/"
           className="login-brand"
         >
-
-          <span className="login-logo">
-            <span className="login-logo-dot" />
-          </span>
+          <img
+            src="/assets/attendx-logo.png"
+            alt="AttendX Logo"
+            style={{ width: 38, height: 38, objectFit: "contain", borderRadius: 8 }}
+          />
 
           <span>
-
             <strong>
               AttendX
             </strong>
-
             <small>
               Smart Attendance Infrastructure
             </small>
-
           </span>
-
         </a>
 
         {/* LEFT CONTENT */}
@@ -2100,31 +2097,6 @@ export default function Login() {
                   ✓ Secure attendance flow active
                 </div>
 
-              </div>
-
-            </div>
-
-            {/* TEMPORARY DEMO CREDENTIALS */}
-
-            <div className="demo-credentials">
-
-              <span className="demo-title">
-                TEMPORARY STUDENT ACCESS
-              </span>
-
-              <div className="demo-row">
-                <span>Student ID</span>
-                <b>STU-2026-001</b>
-              </div>
-
-              <div className="demo-row">
-                <span>Email</span>
-                <b>student@attendx.com</b>
-              </div>
-
-              <div className="demo-row">
-                <span>Password</span>
-                <b>Student@123</b>
               </div>
 
             </div>
@@ -2314,57 +2286,6 @@ export default function Login() {
                   Change
                 </button>
 
-              </div>
-
-              {/* DEMO AUTOFILL SHORTCUT */}
-              <div style={{
-                background: "rgba(91, 95, 239, 0.08)",
-                border: "1px dashed var(--attendx-indigo, #5B5FEF)",
-                borderRadius: "8px",
-                padding: "10px 14px",
-                marginBottom: "16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "8px"
-              }}>
-                <div style={{ fontSize: "12px", color: "#172033" }}>
-                  <strong>Demo Evaluation:</strong><br />
-                  <span style={{ color: "#667085", fontSize: "11px" }}>
-                    {role === "student" && "STU-2026-001 • Student@123"}
-                    {role === "teacher" && "TCH-2026-001 • Teacher@123"}
-                    {role === "admin" && "ADM-2026-001 • Admin@123"}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (role === "student") {
-                      setEmail("STU-2026-001");
-                      setPassword("Student@123");
-                    } else if (role === "teacher") {
-                      setEmail("TCH-2026-001");
-                      setPassword("Teacher@123");
-                    } else if (role === "admin") {
-                      setEmail("ADM-2026-001");
-                      setPassword("Admin@123");
-                    }
-                    setMessage("");
-                  }}
-                  style={{
-                    background: "#5B5FEF",
-                    color: "#FFFFFF",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  ⚡ Auto-Fill Credentials
-                </button>
               </div>
 
               {/* FORM */}

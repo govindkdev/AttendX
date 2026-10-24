@@ -284,7 +284,7 @@ function CreateAccount() {
      STUDENT REGISTRATION
   ====================================================== */
 
-  const registerStudent = () => {
+  const registerStudent = async () => {
     if (!form.studentId.trim()) {
       showError("Enter the Student ID provided by your Admin.");
       return;
@@ -337,7 +337,7 @@ function CreateAccount() {
     Student ID admin-issued hona chahiye.
     Enforces authorization check against Admin records.
     */
-    const result = authService.registerStudent(form);
+    const result = await authService.registerStudent(form);
     if (!result.success) {
       showError(result.error);
       return;
@@ -355,7 +355,7 @@ function CreateAccount() {
      TEACHER REGISTRATION
   ====================================================== */
 
-  const registerTeacher = () => {
+  const registerTeacher = async () => {
     if (!form.teacherId.trim()) {
       showError("Enter the Teacher ID provided by your Admin.");
       return;
@@ -388,7 +388,7 @@ function CreateAccount() {
       return;
     }
 
-    const result = authService.registerTeacher(form);
+    const result = await authService.registerTeacher(form);
     if (!result.success) {
       showError(result.error);
       return;

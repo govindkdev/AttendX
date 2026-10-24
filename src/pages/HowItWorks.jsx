@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Footer from "../components/common/Footer";
 import "../style/HowItWorks.css";
 
 /*
@@ -1507,25 +1508,20 @@ function HowItWorks() {
               href="/security"
               className="how-final-button"
             >
-
               Explore Security
-
               <Icon
                 name="arrow"
                 size={15}
               />
-
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Footer */}
+      <Footer />
     </div>
   );
 }
-
 
 export default HowItWorks;

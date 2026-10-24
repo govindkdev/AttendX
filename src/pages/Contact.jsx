@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Footer from "../components/common/Footer";
 import "../style/Contact.css";
 
 /*
@@ -1426,25 +1427,20 @@ function Contact() {
               href="#contact-form"
               className="contact-final-button"
             >
-
               Start a Conversation
-
               <Icon
                 name="arrow"
                 size={15}
               />
-
             </a>
-
           </div>
-
         </div>
-
       </section>
 
+      {/* Institutional Footer */}
+      <Footer />
     </div>
   );
 }
-
 
 export default Contact;
