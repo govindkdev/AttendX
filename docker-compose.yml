@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: attendx_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: attendx_user
+      POSTGRES_PASSWORD: attendx_secure_password
+      POSTGRES_DB: attendx
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendx_user -d attendx"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: attendx_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://attendx_user:attendx_secure_password@postgres:5432/attendx
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-attendx_super_secret_prod_key_change_me_32bytes}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-attendx_jwt_secret_key_change_me_32bytes}
+      FRONTEND_ORIGIN: http://localhost:5173
+      INSTITUTE_TIMEZONE: Asia/Kolkata
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: attendx_frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

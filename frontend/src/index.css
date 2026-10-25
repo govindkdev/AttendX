@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-blue-600 selection:text-white;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================================================
+   FIX 2 — Premium Landing-Page Hero Entrance Animations
+   ========================================================================== */
+@keyframes heroEntranceFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-animate-badge {
+  animation: heroEntranceFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+.hero-word-1 {
+  display: inline-block;
+  animation: heroEntranceFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.hero-word-2 {
+  display: inline-block;
+  animation: heroEntranceFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+.hero-word-3 {
+  display: inline-block;
+  animation: heroEntranceFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+
+.hero-animate-desc {
+  animation: heroEntranceFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both;
+}
+
+.hero-animate-cta {
+  animation: heroEntranceFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.95s both;
+}
+
+.hero-animate-indicators {
+  animation: heroEntranceFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.15s both;
+}
+
+/* ==========================================================================
+   FIX 3 — Scroll-Triggered Reveal Animations
+   ========================================================================== */
+.scroll-reveal-init {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   Accessibility: prefers-reduced-motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-animate-badge,
+  .hero-word-1,
+  .hero-word-2,
+  .hero-word-3,
+  .hero-animate-desc,
+  .hero-animate-cta,
+  .hero-animate-indicators,
+  .scroll-reveal-init,
+  .scroll-reveal-visible {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
