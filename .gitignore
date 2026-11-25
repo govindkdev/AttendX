@@ -11,3 +11,21 @@ __pycache__/
 *.pyc
 *.log
 .DS_Store
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Face images
+backend/backend/uploads/faces/
+backend/uploads/faces/
+
+# Runtime storage
+backend/storage/
+storage/
+
+# Backups
+*_backup_*/
+frontend_backup_20261125/
+
