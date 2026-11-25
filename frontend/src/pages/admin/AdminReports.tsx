@@ -11,7 +11,8 @@ import {
   AlertCircle,
   X,
   FileCheck,
-  ShieldAlert,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 export const AdminReports: React.FC = () => {
@@ -77,26 +78,31 @@ export const AdminReports: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <FileText className="w-7 h-7 text-indigo-600" />
-          Institutional Reports & Data Exports
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Export verified attendance ledgers, compliance audits, and academic attendance summaries in Excel, CSV, or PDF format.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Institutional Audit & Export
+          </span>
+          <h1 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <FileText className="w-6 h-6 text-[#3B82F6]" />
+            Institutional Reports & Data Exports
+          </h1>
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Export verified attendance ledgers, compliance audits, and academic attendance summaries in Excel, CSV, or PDF format.
+          </p>
+        </div>
       </div>
 
       {feedback && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between text-sm ${
+          className={`p-4 rounded-xl flex items-center justify-between text-xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}
         >
           <span>{feedback.text}</span>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={() => setFeedback(null)} className="text-[#A1AEC2] hover:text-[#F8FAFC]">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -105,9 +111,9 @@ export const AdminReports: React.FC = () => {
       {/* Export Options Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Filter Configurator */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
-          <h2 className="text-lg font-bold text-slate-900 pb-3 border-b border-slate-100 flex items-center gap-2">
-            <Filter className="w-5 h-5 text-indigo-600" />
+        <div className="lg:col-span-2 bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-6">
+          <h2 className="text-sm font-bold font-heading text-[#F8FAFC] pb-3 border-b border-[#23334A] flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[#3B82F6]" />
             Report Parameters & Scope
           </h2>
 
@@ -115,22 +121,22 @@ export const AdminReports: React.FC = () => {
             {/* Date Range */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">End Date</label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 />
               </div>
             </div>
@@ -138,11 +144,11 @@ export const AdminReports: React.FC = () => {
             {/* Department & Course */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Department</label>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 >
                   <option value="">All Departments</option>
                   {departments.map((d) => (
@@ -154,11 +160,11 @@ export const AdminReports: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Course</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Academic Course</label>
                 <select
                   value={selectedCourse}
                   onChange={(e) => setSelectedCourse(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 >
                   <option value="">All Courses</option>
                   {courses.map((c) => (
@@ -173,11 +179,11 @@ export const AdminReports: React.FC = () => {
             {/* Subject & Status */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Specific Subject</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Specific Subject</label>
                 <select
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 >
                   <option value="">All Subjects</option>
                   {subjects.map((s) => (
@@ -189,11 +195,11 @@ export const AdminReports: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Attendance Status</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Attendance Status</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 >
                   <option value="">All Statuses (Present, Late, Absent, Excused)</option>
                   <option value="PRESENT">Only Present</option>
@@ -206,8 +212,8 @@ export const AdminReports: React.FC = () => {
           </div>
 
           {/* Export Action Buttons */}
-          <div className="pt-6 border-t border-slate-100 space-y-3">
-            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">
+          <div className="pt-6 border-t border-[#23334A] space-y-3">
+            <span className="text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider block">
               Generate & Download
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -215,7 +221,7 @@ export const AdminReports: React.FC = () => {
                 type="button"
                 onClick={() => handleDownload('excel')}
                 disabled={downloadingFormat !== null}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm disabled:opacity-50"
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm disabled:opacity-50"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 {downloadingFormat === 'excel' ? 'Exporting...' : 'Excel (.xlsx)'}
@@ -225,9 +231,9 @@ export const AdminReports: React.FC = () => {
                 type="button"
                 onClick={() => handleDownload('csv')}
                 disabled={downloadingFormat !== null}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-900 text-white transition shadow-sm disabled:opacity-50"
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold bg-[#0D1525] hover:bg-[#16243A] text-[#F8FAFC] border border-[#23334A] transition shadow-sm disabled:opacity-50"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4 text-[#3B82F6]" />
                 {downloadingFormat === 'csv' ? 'Exporting...' : 'CSV (.csv)'}
               </button>
 
@@ -235,7 +241,7 @@ export const AdminReports: React.FC = () => {
                 type="button"
                 onClick={() => handleDownload('pdf')}
                 disabled={downloadingFormat !== null}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm disabled:opacity-50"
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm disabled:opacity-50"
               >
                 <FileCheck className="w-4 h-4" />
                 {downloadingFormat === 'pdf' ? 'Generating...' : 'Official PDF'}
@@ -246,42 +252,25 @@ export const AdminReports: React.FC = () => {
 
         {/* Security & Standards Information */}
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-indigo-600" />
-              Security & Integrity Standards
+          <div className="bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-4">
+            <h3 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#22D3EE]" />
+              Compliance Specifications
             </h3>
-            <ul className="space-y-3 text-xs text-slate-600">
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Formula Injection Sanitization:</strong> All exported cells beginning with =, +, -, or @ are
-                  prefixed to prevent spreadsheet formula execution exploits.
-                </span>
+            <ul className="text-xs text-[#A1AEC2] space-y-2">
+              <li className="flex items-start gap-1.5">
+                <span className="text-[#3B82F6] font-bold">&bull;</span>
+                <span>All exports include immutable cryptographic timestamp metadata.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>UTF-8 BOM Encoding:</strong> CSV exports feature Byte Order Mark headers ensuring non-English
-                  character fidelity across Microsoft Excel.
-                </span>
+              <li className="flex items-start gap-1.5">
+                <span className="text-[#3B82F6] font-bold">&bull;</span>
+                <span>Verification vectors (Biometric Face, Signed QR, Manual Override) are distinctly tagged.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Audited Generation:</strong> Every report download is recorded in the immutable audit log with
-                  administrator user ID and time.
-                </span>
+              <li className="flex items-start gap-1.5">
+                <span className="text-[#3B82F6] font-bold">&bull;</span>
+                <span>Suitable for University UGC / AICTE accreditation compliance submissions.</span>
               </li>
             </ul>
-          </div>
-
-          <div className="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-5 text-xs text-indigo-950">
-            <h4 className="font-bold mb-1 text-indigo-900">GCRG Academic Governance</h4>
-            <p className="leading-relaxed text-indigo-800/90">
-              Official PDF reports include the GCRG Group of Institutions header, Lucknow campus seal, and timestamp
-              verification block for accreditation and examination eligibility reviews.
-            </p>
           </div>
         </div>
       </div>

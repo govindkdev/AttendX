@@ -11,8 +11,8 @@ import {
   Radio,
   Users,
   X,
-  MailCheck,
   Megaphone,
+  RadioTower
 } from 'lucide-react';
 
 export const AdminNotifications: React.FC = () => {
@@ -79,173 +79,156 @@ export const AdminNotifications: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Bell className="w-7 h-7 text-indigo-600" />
-          Institutional Notification Dispatch
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Broadcast official announcements across the institute and monitor automated attendance absence dispatch logs.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Communication Dispatcher
+          </span>
+          <h1 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <Bell className="w-6 h-6 text-[#8B5CF6]" />
+            Campus Broadcast & Alerts
+          </h1>
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Broadcast official institutional announcements across portals and monitor automated attendance notifications.
+          </p>
+        </div>
       </div>
 
       {feedback && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between text-sm ${
+          className={`p-4 rounded-xl flex items-center justify-between text-xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}
         >
           <span>{feedback.text}</span>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={() => setFeedback(null)} className="text-[#A1AEC2] hover:text-[#F8FAFC]">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Broadcast Announcement Form */}
-        <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-            <Megaphone className="w-5 h-5 text-indigo-600" />
-            Compose Announcement
-          </h2>
+        {/* Broadcast Form */}
+        <div className="bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-5">
+          <div className="pb-3 border-b border-[#23334A]">
+            <h2 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-[#8B5CF6]" />
+              Broadcast Announcement
+            </h2>
+            <p className="text-xs text-[#A1AEC2] mt-0.5">Send alert to connected portal users.</p>
+          </div>
 
           <form onSubmit={handleBroadcast} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Target Audience</label>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setTargetRole('ALL')}
-                  className={`py-1.5 rounded-md transition ${
-                    targetRole === 'ALL' ? 'bg-white shadow-xs text-indigo-600 font-bold' : 'text-slate-600'
-                  }`}
-                >
-                  All Users
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTargetRole('STUDENT')}
-                  className={`py-1.5 rounded-md transition ${
-                    targetRole === 'STUDENT' ? 'bg-white shadow-xs text-indigo-600 font-bold' : 'text-slate-600'
-                  }`}
-                >
-                  Students
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTargetRole('TEACHER')}
-                  className={`py-1.5 rounded-md transition ${
-                    targetRole === 'TEACHER' ? 'bg-white shadow-xs text-indigo-600 font-bold' : 'text-slate-600'
-                  }`}
-                >
-                  Teachers
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Notice Headline *</label>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Notice Headline *</label>
               <input
                 type="text"
-                required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Mid-term Exam Schedule Announced"
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. Campus Holiday / Midterm Schedule"
+                required
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Message Body *</label>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Target Audience</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'ALL', label: 'All Users' },
+                  { key: 'STUDENT', label: 'Students' },
+                  { key: 'TEACHER', label: 'Faculty' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTargetRole(t.key as any)}
+                    className={`py-2 px-2 rounded-xl border text-[11px] font-semibold transition-all ${
+                      targetRole === t.key
+                        ? 'border-[#8B5CF6] bg-[#8B5CF6]/15 text-[#F8FAFC]'
+                        : 'border-[#23334A] bg-[#0D1525] text-[#A1AEC2] hover:border-[#8B5CF6]/40'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Message Content *</label>
               <textarea
-                required
                 rows={4}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Enter official institutional notice details..."
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Compose announcement body..."
+                required
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
             </div>
 
             <button
               type="submit"
               disabled={broadcasting}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition shadow-sm disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
             >
-              <Send className="w-4 h-4" />
-              {broadcasting ? 'Broadcasting...' : 'Broadcast Notice'}
+              <Send className="w-3.5 h-3.5" />
+              {broadcasting ? 'Broadcasting...' : 'Broadcast Announcement'}
             </button>
           </form>
         </div>
 
-        {/* System & Absence Notification Feed */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Recent Notices & Absence Alerts</h2>
-              <p className="text-xs text-slate-500">Live feed of notifications dispatched across AttendX.</p>
-            </div>
-            <span className="text-xs bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full">
-              {notifications.length} Total
-            </span>
+        {/* Feed of Recent Broadcasts */}
+        <div className="lg:col-span-2 bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-4">
+          <div className="pb-3 border-b border-[#23334A] flex justify-between items-center">
+            <h2 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center gap-2">
+              <RadioTower className="w-4 h-4 text-[#22D3EE]" />
+              Sent & Received Notifications ({notifications.length})
+            </h2>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Loading notification logs...</div>
+            <div className="p-8 text-center text-xs text-[#A1AEC2]">Loading notifications...</div>
           ) : notifications.length === 0 ? (
             <EmptyState
-              title="No notifications dispatched"
-              description="No notices or alerts have been dispatched yet. When faculty end lectures with absent students, automated alerts appear here."
               icon={Bell}
+              title="No notifications dispatched"
+              description="Campus broadcasts and automated alert digests will appear in this timeline."
             />
           ) : (
             <div className="space-y-3">
               {notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`p-4 rounded-xl border transition ${
-                    n.is_read
-                      ? 'bg-white border-slate-200 text-slate-700'
-                      : 'bg-indigo-50/40 border-indigo-200 text-slate-900'
-                  }`}
+                  className="p-4 rounded-xl bg-[#0D1525] border border-[#23334A] flex items-start justify-between gap-3 hover:border-[#3B82F6]/30 transition"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900">{n.title}</span>
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                          {n.notification_type}
-                        </span>
-                        {!n.is_read && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-600" title="Unread"></span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">{n.message}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-xs text-[#F8FAFC]">{n.title}</h4>
+                      {!n.is_read && (
+                        <span className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                      )}
                     </div>
-
-                    {!n.is_read && (
-                      <button
-                        onClick={() => handleMarkRead(n.id)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap p-1"
-                        title="Mark as Read"
-                      >
-                        Mark Read
-                      </button>
-                    )}
+                    <p className="text-xs text-[#A1AEC2] leading-relaxed">{n.message}</p>
+                    <div className="flex items-center gap-3 text-[10px] text-[#64748B] pt-1">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {n.created_at ? new Date(n.created_at).toLocaleString('en-IN') : 'Recent'}
+                      </span>
+                      <span>Type: {n.notification_type || 'General'}</span>
+                    </div>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {new Date(n.created_at).toLocaleString('en-IN')}
-                    </span>
-                    <span className="flex items-center gap-1 text-slate-500">
-                      <MailCheck className="w-3.5 h-3.5 text-emerald-600" /> Dispatched
-                    </span>
-                  </div>
+                  {!n.is_read && (
+                    <button
+                      onClick={() => handleMarkRead(n.id)}
+                      className="text-[11px] text-[#3B82F6] hover:text-[#60A5FA] font-medium shrink-0"
+                    >
+                      Mark read
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

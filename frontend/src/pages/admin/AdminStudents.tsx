@@ -3,6 +3,7 @@ import { api } from '@/services/api';
 import type { StudentListItem, Department, Course, Branch } from '@/types';
 import { EmptyState } from '@/components/common/EmptyState';
 import { FaceEnrollmentModal } from '@/features/face-recognition/FaceEnrollmentModal';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   GraduationCap,
   Plus,
@@ -17,12 +18,10 @@ import {
   Trash2,
   Copy,
   Check,
-  Sparkles,
   Eye,
   MapPin,
   Mail,
   Phone,
-  User,
   Users,
 } from 'lucide-react';
 
@@ -98,34 +97,39 @@ export const AdminStudents: React.FC = () => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (courseId) {
-      api.getBranches(Number(courseId)).then(setBranches).catch(() => setBranches([]));
-    } else {
+  const handleDepartmentChange = async (deptId: number) => {
+    setDepartmentId(deptId);
+    setCourseId('');
+    setBranchId('');
+    setBranches([]);
+    try {
+      const crs = await api.getCourses(deptId);
+      setCourses(crs);
+    } catch {
+      setCourses([]);
+    }
+  };
+
+  const handleCourseChange = async (cId: number) => {
+    setCourseId(cId);
+    setBranchId('');
+    try {
+      const brs = await api.getBranches(cId);
+      setBranches(brs);
+    } catch {
       setBranches([]);
     }
-  }, [courseId]);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     loadData(search);
   };
 
-  const handleToggleStatus = async (profileId: number, currentStatus: boolean) => {
-    try {
-      await api.toggleStudentStatus(profileId, !currentStatus);
-      setStudents((prev) =>
-        prev.map((s) => (s.profile_id === profileId ? { ...s, is_active: !currentStatus } : s))
-      );
-    } catch (err: any) {
-      alert(err.message || 'Status update failed');
-    }
-  };
-
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !rollNumber || !courseId || !branchId || !departmentId) {
-      setErrorMsg('Please fill in all mandatory fields (Name, Email, Roll Number, Academic selections).');
+    if (!fullName || !email || !rollNumber || !departmentId || !courseId || !branchId) {
+      setErrorMsg('Please fill in all required academic enrollment fields.');
       return;
     }
 
@@ -147,15 +151,21 @@ export const AdminStudents: React.FC = () => {
         parent_phone: parentPhone.trim() || undefined,
         parent_email: parentEmail.trim() || undefined,
         address: address.trim() || undefined,
-        initial_password: initialPassword.trim() || undefined,
+        password: initialPassword.trim() || undefined,
       });
 
       setModalOpen(false);
+      setCreatedStudent(newStu);
+
       // Reset form
       setStudentId('');
       setFullName('');
       setEmail('');
       setRollNumber('');
+      setDepartmentId('');
+      setCourseId('');
+      setBranchId('');
+      setSemester(1);
       setPhoneNumber('');
       setParentName('');
       setParentPhone('');
@@ -163,13 +173,22 @@ export const AdminStudents: React.FC = () => {
       setAddress('');
       setInitialPassword('');
 
-      // Open Success Modal with copyable ID
-      setCreatedStudent(newStu);
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to provision student.');
+      setErrorMsg(err.message || 'Failed to enroll student.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleStatus = async (profileId: number, currentStatus: boolean) => {
+    try {
+      await api.toggleStudentStatus(profileId, !currentStatus);
+      setStudents((prev) =>
+        prev.map((s) => (s.profile_id === profileId ? { ...s, is_active: !currentStatus } : s))
+      );
+    } catch (err: any) {
+      alert(err.message || 'Status update failed');
     }
   };
 
@@ -194,8 +213,10 @@ export const AdminStudents: React.FC = () => {
   const handleUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) return;
+
     setSubmitting(true);
     setErrorMsg(null);
+
     try {
       await api.updateStudent(selectedStudent.profile_id, {
         full_name: editFullName.trim(),
@@ -248,12 +269,26 @@ export const AdminStudents: React.FC = () => {
     setTimeout(() => setCopiedId(false), 2000);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Student Enrollment Management</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Student Management Registry
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Student Enrollment Management
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">
             Provision unique student IDs, enroll academic profiles, and manage active statuses.
           </p>
         </div>
@@ -265,9 +300,9 @@ export const AdminStudents: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search student..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-2.5" />
           </form>
 
           <button
@@ -275,18 +310,19 @@ export const AdminStudents: React.FC = () => {
               setErrorMsg(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors shrink-0"
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all shrink-0"
           >
             <Plus className="w-4 h-4 mr-1.5" /> Enroll Student
           </button>
         </div>
       </div>
 
+      {/* Main Table */}
       {students.length > 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-[#111D30] rounded-2xl border border-[#23334A] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+            <table className="min-w-full divide-y divide-[#23334A] text-left text-xs">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-3.5 px-6">Student Identity</th>
                   <th className="py-3.5 px-6">Roll Number</th>
@@ -297,17 +333,17 @@ export const AdminStudents: React.FC = () => {
                   <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#23334A]">
                 {students.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={s.id} className="hover:bg-[#16243A]/60 transition-colors">
                     <td className="py-4 px-6">
-                      <div className="font-bold text-slate-900">{s.full_name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5">
+                      <div className="font-semibold text-[#F8FAFC]">{s.full_name}</div>
+                      <div className="text-[11px] text-[#A1AEC2] font-mono flex items-center space-x-1.5 mt-0.5">
                         <span>{s.student_id}</span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(s.student_id)}
-                          className="text-slate-400 hover:text-blue-600"
+                          className="text-[#64748B] hover:text-[#3B82F6]"
                           title="Copy Student ID"
                         >
                           <Copy className="w-3 h-3" />
@@ -315,55 +351,51 @@ export const AdminStudents: React.FC = () => {
                         <span>· {s.email}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-6 font-mono font-semibold text-slate-800">
+                    <td className="py-4 px-6 font-mono font-semibold text-[#F8FAFC]">
                       {s.roll_number}
                     </td>
-                    <td className="py-4 px-6 text-slate-600">
+                    <td className="py-4 px-6 text-[#A1AEC2]">
                       {s.course_name} — {s.branch_name}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-semibold">
+                    <td className="py-4 px-6 text-[#A1AEC2] font-semibold">
                       Sem {s.semester}
                     </td>
                     <td className="py-4 px-6">
                       {s.face_enrolled ? (
-                        <span className="inline-flex items-center text-emerald-700 font-semibold text-[11px]">
+                        <span className="inline-flex items-center text-emerald-400 font-semibold text-[11px]">
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Enrolled
                         </span>
                       ) : (
                         <button
                           onClick={() => openFaceEnroll(s)}
-                          className="inline-flex items-center px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-semibold text-[11px] transition-colors"
+                          className="inline-flex items-center px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 font-semibold text-[11px] transition-colors"
                         >
-                          <Camera className="w-3.5 h-3.5 mr-1 text-amber-600" /> Enroll Face
+                          <Camera className="w-3.5 h-3.5 mr-1" /> Enroll Face
                         </button>
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        s.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {s.is_active ? 'ACTIVE' : 'DEACTIVATED'}
-                      </span>
+                      <StatusBadge status={s.is_active ? 'ACTIVE' : 'INACTIVE'} />
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end space-x-1">
                         <button
                           onClick={() => openViewModal(s)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="View Full Student Profile & Parent Details"
+                          className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#3B82F6] hover:bg-[#16243A] transition-colors"
+                          title="View Full Student Profile"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openFaceEnroll(s)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#22D3EE] hover:bg-[#16243A] transition-colors"
                           title={s.face_enrolled ? 'Re-enroll Face Biometrics' : 'Enroll Face Biometrics'}
                         >
                           <Camera className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openEditModal(s)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-purple-400 hover:bg-[#16243A] transition-colors"
                           title="Edit Student Details"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -372,8 +404,8 @@ export const AdminStudents: React.FC = () => {
                           onClick={() => handleToggleStatus(s.profile_id, s.is_active)}
                           className={`p-1.5 rounded-lg transition-colors ${
                             s.is_active
-                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                              ? 'text-[#64748B] hover:text-amber-400 hover:bg-[#16243A]'
+                              : 'text-[#64748B] hover:text-emerald-400 hover:bg-[#16243A]'
                           }`}
                           title={s.is_active ? 'Deactivate Student' : 'Activate Student'}
                         >
@@ -381,7 +413,7 @@ export const AdminStudents: React.FC = () => {
                         </button>
                         <button
                           onClick={() => openDeleteModal(s)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-[#16243A] transition-colors"
                           title="Delete Student"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -398,7 +430,7 @@ export const AdminStudents: React.FC = () => {
         <EmptyState
           icon={GraduationCap}
           title="No students found"
-          description="The student database is currently empty adhering to the zero-demo-data policy. Click 'Enroll Student' to add real academic enrollment records."
+          description="The student registry is currently empty. Click 'Enroll Student' to provision academic student profiles."
           actionText="Enroll New Student"
           onAction={() => {
             setErrorMsg(null);
@@ -409,21 +441,21 @@ export const AdminStudents: React.FC = () => {
 
       {/* Enroll Student Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Provision New Student</h3>
-            <p className="text-xs text-slate-500 mb-6">Create authorized student enrollment. Leaves student in pending-activation until self-activated.</p>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Provision New Student</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Create authorized student enrollment. Leaves student in pending-activation until self-activated.</p>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -431,66 +463,67 @@ export const AdminStudents: React.FC = () => {
             <form onSubmit={handleCreateStudent} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Student ID <span className="text-slate-400 font-normal">(Optional)</span>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
+                    Student ID <span className="text-[#64748B] font-normal">(Optional)</span>
                   </label>
                   <input
                     type="text"
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder="Auto-generated if blank (STU-YYYY-XXXX)"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none uppercase"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Leave blank to auto-generate unique sequence</p>
+                  <p className="text-[10px] text-[#64748B] mt-1">Leave blank to auto-generate unique sequence</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Roll Number *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Roll Number *</label>
                   <input
                     type="text"
                     value={rollNumber}
                     onChange={(e) => setRollNumber(e.target.value)}
                     placeholder="e.g. 210052010001"
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Full Legal Name *</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="Student Full Name"
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Registered Email *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Institutional Email *</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. student@example.com"
+                    placeholder="student@institution.edu"
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Department, Course, Branch, Semester */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Department *</label>
                   <select
                     value={departmentId}
-                    onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => handleDepartmentChange(Number(e.target.value))}
                     required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
                     <option value="">Select Department</option>
                     {departments.map((d) => (
@@ -502,35 +535,18 @@ export const AdminStudents: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Course *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Course *</label>
                   <select
                     value={courseId}
-                    onChange={(e) => setCourseId(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => handleCourseChange(Number(e.target.value))}
                     required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    disabled={!departmentId}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] disabled:opacity-50"
                   >
                     <option value="">Select Course</option>
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Branch *</label>
-                  <select
-                    value={branchId}
-                    onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : '')}
-                    required
-                    disabled={!courseId}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white disabled:opacity-50"
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
+                        {c.name} ({c.code})
                       </option>
                     ))}
                   </select>
@@ -539,106 +555,127 @@ export const AdminStudents: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Current Semester *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={semester}
-                    onChange={(e) => setSemester(Number(e.target.value))}
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Branch *</label>
+                  <select
+                    value={branchId}
+                    onChange={(e) => setBranchId(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                    disabled={!courseId}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] disabled:opacity-50"
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Student Phone</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Current Semester *</label>
+                  <select
+                    value={semester}
+                    onChange={(e) => setSemester(Number(e.target.value))}
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Personal & Parent Contact */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Student Phone Number</label>
                   <input
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="e.g. +91 9876543210"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="+91 9876543210"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Parent / Guardian Name</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent / Guardian Name</label>
                   <input
                     type="text"
                     value={parentName}
                     onChange={(e) => setParentName(e.target.value)}
-                    placeholder="Guardian Name"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="Parent Full Name"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Phone (Alerts)</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent Mobile (SMS Alerts)</label>
                   <input
                     type="tel"
                     value={parentPhone}
                     onChange={(e) => setParentPhone(e.target.value)}
-                    placeholder="+91..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="+91 9876543210"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Email (Alerts)</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent Email (Dispatches)</label>
                   <input
                     type="email"
                     value={parentEmail}
                     onChange={(e) => setParentEmail(e.target.value)}
-                    placeholder="parent@example.com"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="parent@gmail.com"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Campus / Residential Address</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Campus / Residential Address</label>
                 <input
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="e.g. Hostels / Permanent residential address"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  placeholder="e.g. Campus Hostel / Permanent address"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Initial Password <span className="text-slate-400 font-normal">(Optional)</span>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
+                  Initial Password <span className="text-[#64748B] font-normal">(Default: Student@123)</span>
                 </label>
                 <input
                   type="text"
                   value={initialPassword}
                   onChange={(e) => setInitialPassword(e.target.value)}
-                  placeholder="Leave empty for pending self-activation flow"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  placeholder="Student@123"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  If omitted, student will self-activate their account at /create-account using their Student ID & OTP.
-                </p>
               </div>
 
               <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  {submitting ? 'Enrolling...' : 'Provision Student'}
+                  {submitting ? 'Provisioning...' : 'Provision Student'}
                 </button>
               </div>
             </form>
@@ -646,177 +683,151 @@ export const AdminStudents: React.FC = () => {
         </div>
       )}
 
-      {/* Creation Success Modal with Copyable ID */}
+      {/* Success Modal Showing Issued Student ID */}
       {createdStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-7 h-7" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-
-            <h3 className="text-xl font-bold text-slate-900">Student Enrolled Successfully</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Record created for <span className="font-semibold text-slate-800">{createdStudent.full_name}</span>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC]">Student Provisioned!</h3>
+            <p className="text-xs text-[#A1AEC2] mt-1">
+              Provide this official Student ID to the student to activate their AttendX account.
             </p>
 
-            <div className="my-5 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                Allocated Student ID
-              </p>
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-xl font-mono font-black text-blue-700">
-                  {createdStudent.student_id}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(createdStudent.student_id)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white border border-slate-200 transition-colors"
-                  title="Copy Student ID"
-                >
-                  {copiedId ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-2">
-                Share this ID with the student to activate their portal at <span className="font-mono text-slate-700">/create-account</span>
-              </p>
+            <div className="my-6 p-4 rounded-xl bg-[#0D1525] border border-[#23334A] flex items-center justify-between">
+              <span className="font-mono font-bold text-lg text-[#F8FAFC]">{createdStudent.student_id}</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(createdStudent.student_id)}
+                className="px-3 py-1.5 rounded-lg bg-[#16243A] border border-[#23334A] text-[#F8FAFC] hover:border-[#3B82F6] text-xs font-semibold inline-flex items-center"
+              >
+                {copiedId ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                {copiedId ? 'Copied' : 'Copy'}
+              </button>
             </div>
 
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const stu = createdStudent;
-                  setCreatedStudent(null);
-                  openFaceEnroll(stu);
-                }}
-                className="w-full inline-flex items-center justify-center py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all"
-              >
-                <Camera className="w-4 h-4 mr-2" /> Enroll Face Biometrics Now (25–30 Samples)
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreatedStudent(null)}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
-              >
-                Done
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setCreatedStudent(null)}
+              className="w-full py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-xs font-semibold shadow-sm transition-colors"
+            >
+              Done & Return to Directory
+            </button>
           </div>
         </div>
       )}
 
       {/* Edit Student Modal */}
       {editModalOpen && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => {
                 setEditModalOpen(false);
                 setSelectedStudent(null);
               }}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Edit Student Profile</h3>
-            <p className="text-xs text-slate-500 mb-5">
-              Editing profile for <span className="font-mono text-slate-800">{selectedStudent.student_id}</span>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Edit Student Profile</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">
+              Update details for <span className="font-semibold text-[#F8FAFC]">{selectedStudent.full_name}</span> ({selectedStudent.student_id})
             </p>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
 
             <form onSubmit={handleUpdateStudent} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Full Legal Name *</label>
                 <input
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Roll Number</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">University Roll Number *</label>
                   <input
                     type="text"
                     value={editRollNumber}
                     onChange={(e) => setEditRollNumber(e.target.value)}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Semester</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Current Semester *</label>
+                  <select
                     value={editSemester}
                     onChange={(e) => setEditSemester(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Student Phone Number</label>
                 <input
                   type="tel"
                   value={editPhoneNumber}
                   onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Name</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent / Guardian Name</label>
                   <input
                     type="text"
                     value={editParentName}
                     onChange={(e) => setEditParentName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Phone</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent Mobile Number</label>
                   <input
                     type="tel"
                     value={editParentPhone}
                     onChange={(e) => setEditParentPhone(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Email</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Parent Email</label>
                 <input
                   type="email"
                   value={editParentEmail}
                   onChange={(e) => setEditParentEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Campus / Residential Address</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Campus / Residential Address</label>
                 <input
                   type="text"
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
                   placeholder="e.g. Hostels / Permanent address"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
@@ -827,14 +838,14 @@ export const AdminStudents: React.FC = () => {
                     setEditModalOpen(false);
                     setSelectedStudent(null);
                   }}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -846,16 +857,16 @@ export const AdminStudents: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Student Record?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to remove <span className="font-semibold text-slate-800">{selectedStudent.full_name}</span> ({selectedStudent.student_id})?
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Student Record?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove <span className="font-semibold text-[#F8FAFC]">{selectedStudent.full_name}</span> ({selectedStudent.student_id})?
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[11px] text-[#64748B] mt-1">
               If attendance records exist, the student will be safely deactivated to preserve historical compliance.
             </p>
 
@@ -866,7 +877,7 @@ export const AdminStudents: React.FC = () => {
                   setDeleteModalOpen(false);
                   setSelectedStudent(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
@@ -885,35 +896,35 @@ export const AdminStudents: React.FC = () => {
 
       {/* View Student Profile Modal */}
       {viewModalOpen && viewStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => {
                 setViewModalOpen(false);
                 setViewStudent(null);
               }}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#8B5CF6] text-white flex items-center justify-center font-bold font-heading text-lg">
                 {viewStudent.full_name.charAt(0)}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900">{viewStudent.full_name}</h3>
-                <span className="text-xs text-slate-500 font-medium">Enrolled Student Profile</span>
+                <h3 className="text-xl font-bold font-heading text-[#F8FAFC]">{viewStudent.full_name}</h3>
+                <span className="text-xs text-[#A1AEC2] font-medium">Enrolled Student Profile</span>
               </div>
             </div>
 
             {/* Issued Student ID Box */}
-            <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200/80 mb-6 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-[#0D1525] border border-[#23334A] mb-6 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider block">
                   Issued Student ID
                 </span>
-                <span className="text-lg font-mono font-black text-blue-900">
+                <span className="text-lg font-mono font-bold text-[#F8FAFC]">
                   {viewStudent.student_id}
                 </span>
               </div>
@@ -921,67 +932,64 @@ export const AdminStudents: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => copyToClipboard(viewStudent.student_id)}
-                  className="px-2.5 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-semibold inline-flex items-center shadow-2xs"
+                  className="px-3 py-1.5 rounded-lg bg-[#16243A] border border-[#23334A] text-[#F8FAFC] hover:border-[#3B82F6] text-xs font-semibold inline-flex items-center"
                 >
-                  {copiedId ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  {copiedId ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                   {copiedId ? 'Copied' : 'Copy ID'}
                 </button>
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                  viewStudent.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {viewStudent.is_active ? 'ACTIVE' : 'DEACTIVATED'}
-                </span>
+                <StatusBadge status={viewStudent.is_active ? 'ACTIVE' : 'INACTIVE'} />
               </div>
             </div>
 
             {/* Academic Credentials */}
             <div className="mb-6 space-y-3">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider pb-1.5 border-b border-slate-100">
+              <h4 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider pb-1.5 border-b border-[#23334A] flex items-center">
+                <GraduationCap className="w-3.5 h-3.5 mr-1.5 text-[#3B82F6]" />
                 Academic Program
               </h4>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Course</span>
-                  <span className="font-semibold text-slate-900">{viewStudent.course_name || 'N/A'}</span>
+                  <span className="text-[#64748B] block mb-0.5">Course</span>
+                  <span className="font-semibold text-[#F8FAFC]">{viewStudent.course_name || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Branch</span>
-                  <span className="font-semibold text-slate-900">{viewStudent.branch_name || 'N/A'}</span>
+                  <span className="text-[#64748B] block mb-0.5">Branch</span>
+                  <span className="font-semibold text-[#F8FAFC]">{viewStudent.branch_name || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">University Roll Number</span>
-                  <span className="font-mono font-semibold text-slate-900">{viewStudent.roll_number}</span>
+                  <span className="text-[#64748B] block mb-0.5">University Roll Number</span>
+                  <span className="font-mono font-semibold text-[#F8FAFC]">{viewStudent.roll_number}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Current Semester</span>
-                  <span className="font-semibold text-slate-900">Semester {viewStudent.semester}</span>
+                  <span className="text-[#64748B] block mb-0.5">Current Semester</span>
+                  <span className="font-semibold text-[#F8FAFC]">Semester {viewStudent.semester}</span>
                 </div>
               </div>
             </div>
 
             {/* Student Contact Information */}
             <div className="mb-6 space-y-3">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider pb-1.5 border-b border-slate-100">
+              <h4 className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider pb-1.5 border-b border-[#23334A]">
                 Student Contact Info
               </h4>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Registered Gmail / Email</span>
-                  <span className="font-semibold text-slate-900">{viewStudent.email}</span>
+                  <span className="text-[#64748B] block mb-0.5">Registered Email</span>
+                  <span className="font-semibold text-[#F8FAFC]">{viewStudent.email}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Student Mobile Number</span>
-                  <span className="font-semibold text-slate-900">{viewStudent.phone_number || 'Not provided'}</span>
+                  <span className="text-[#64748B] block mb-0.5">Student Mobile Number</span>
+                  <span className="font-semibold text-[#F8FAFC]">{viewStudent.phone_number || 'Not provided'}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-400 block mb-0.5">Face Biometrics</span>
+                  <span className="text-[#64748B] block mb-0.5">Face Biometrics</span>
                   <span className="font-semibold">
                     {viewStudent.face_enrolled ? (
-                      <span className="text-emerald-700 flex items-center">
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Enrolled (25–30 Samples)
+                      <span className="text-emerald-400 flex items-center">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Enrolled (Verified Template)
                       </span>
                     ) : (
-                      <span className="text-amber-600 flex items-center">
+                      <span className="text-amber-400 flex items-center">
                         <XCircle className="w-3.5 h-3.5 mr-1" /> Pending Enrollment
                       </span>
                     )}
@@ -992,39 +1000,39 @@ export const AdminStudents: React.FC = () => {
 
             {/* Parent & Guardian Information */}
             <div className="mb-6 space-y-3">
-              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider pb-1.5 border-b border-emerald-100">
-                Parent & Guardian Details
+              <h4 className="text-xs font-bold text-[#22D3EE] uppercase tracking-wider pb-1.5 border-b border-[#23334A] flex items-center">
+                <Users className="w-3.5 h-3.5 mr-1.5 text-[#22D3EE]" /> Parent & Guardian Details
               </h4>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Parent / Guardian Name</span>
-                  <span className="font-bold text-slate-900">{viewStudent.parent_name || 'Not provided'}</span>
+                  <span className="text-[#64748B] block mb-0.5">Parent / Guardian Name</span>
+                  <span className="font-bold text-[#F8FAFC]">{viewStudent.parent_name || 'Not provided'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Parent Phone (SMS Alerts)</span>
-                  <span className="font-semibold text-slate-900 flex items-center">
-                    <Phone className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                  <span className="text-[#64748B] block mb-0.5">Parent Phone (SMS Alerts)</span>
+                  <span className="font-semibold text-[#F8FAFC] flex items-center">
+                    <Phone className="w-3.5 h-3.5 mr-1 text-emerald-400" />
                     {viewStudent.parent_phone || 'Not provided'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Parent Gmail / Email (Dispatches)</span>
-                  <span className="font-semibold text-slate-900 flex items-center">
-                    <Mail className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                  <span className="text-[#64748B] block mb-0.5">Parent Email (Dispatches)</span>
+                  <span className="font-semibold text-[#F8FAFC] flex items-center">
+                    <Mail className="w-3.5 h-3.5 mr-1 text-[#3B82F6]" />
                     {viewStudent.parent_email || 'Not provided'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Residential / Campus Address</span>
-                  <span className="font-medium text-slate-700 flex items-start">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0 mt-0.5" />
+                  <span className="text-[#64748B] block mb-0.5">Residential / Campus Address</span>
+                  <span className="font-medium text-[#A1AEC2] flex items-start">
+                    <MapPin className="w-3.5 h-3.5 mr-1 text-[#64748B] shrink-0 mt-0.5" />
                     {viewStudent.address || 'Not provided'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+            <div className="pt-4 border-t border-[#23334A] flex justify-end space-x-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1033,7 +1041,7 @@ export const AdminStudents: React.FC = () => {
                   setViewStudent(null);
                   openEditModal(s);
                 }}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
+                className="px-4 py-2 rounded-xl bg-[#16243A] hover:bg-[#23334A] text-[#F8FAFC] font-semibold text-xs transition-colors border border-[#23334A]"
               >
                 Edit Student Details
               </button>
@@ -1043,7 +1051,7 @@ export const AdminStudents: React.FC = () => {
                   setViewModalOpen(false);
                   setViewStudent(null);
                 }}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-colors"
+                className="px-5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold text-xs shadow-sm transition-colors"
               >
                 Close
               </button>
@@ -1052,7 +1060,7 @@ export const AdminStudents: React.FC = () => {
         </div>
       )}
 
-      {/* Face Enrollment Modal (25-30 Samples Burst) */}
+      {/* Face Enrollment Modal */}
       <FaceEnrollmentModal
         isOpen={enrollModalOpen}
         student={selectedStudent}

@@ -35,6 +35,7 @@ class LectureSessionStatusResponse(BaseModel):
 class FaceAttendanceSubmit(BaseModel):
     session_id: int
     face_image: str = Field(..., description="Base64 data URL from browser camera")
+    frames: Optional[List[str]] = Field(default=None, description="Optional multi-frame captures for temporal verification")
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     accuracy: Optional[float] = None

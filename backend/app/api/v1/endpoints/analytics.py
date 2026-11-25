@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone, timedelta
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 

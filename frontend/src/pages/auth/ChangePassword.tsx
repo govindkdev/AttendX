@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/authentication/AuthContext';
 import { api } from '@/services/api';
-import { ShieldAlert, Lock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export const ChangePassword: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -57,15 +58,15 @@ export const ChangePassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#080D19] text-[#F8FAFC] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-radial-subtle">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center mx-auto shadow-md">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/25 flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-7 h-7" />
         </div>
-        <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#F8FAFC]">
           {user?.must_change_password ? 'First-Login Password Rotation' : 'Change Password'}
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1.5 text-xs sm:text-sm text-[#A1AEC2]">
           {user?.must_change_password
             ? 'For institutional security compliance, you must set a private secure password before accessing features.'
             : 'Update your account access password'}
@@ -73,71 +74,53 @@ export const ChangePassword: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 sm:px-10 shadow-xl rounded-3xl border border-slate-200">
+        <div className="bg-[#111D30] py-8 px-6 sm:px-10 shadow-2xl rounded-3xl border border-[#23334A] space-y-6">
           {errorMsg && (
-            <div className="mb-6 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="mb-6 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{successMsg} Redirecting to your dashboard...</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Current / Initial Password
-              </label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
+            <PasswordInput
+              label="Current / Initial Password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              required
+            />
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                New Secure Password
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
+            <PasswordInput
+              label="New Secure Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              required
+            />
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
+            <PasswordInput
+              label="Confirm New Password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              required
+            />
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-600/20 flex items-center justify-center mt-2"
+              className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center space-x-2 mt-2"
             >
-              {loading ? 'Updating Password...' : 'Save Password & Continue'}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <span>{loading ? 'Updating Password...' : 'Save Password & Continue'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         </div>

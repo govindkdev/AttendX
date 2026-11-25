@@ -13,14 +13,15 @@ import {
   Mail,
   Phone,
   MapPin,
+  Sliders
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
   const [settings, setSettings] = useState<InstituteSettings>({
-    institute_name: 'GCRG Group of Institutions',
-    address: 'Lucknow, Uttar Pradesh, India',
+    institute_name: 'Campus Management Authority',
+    address: 'Campus Main Enclave',
     timezone: 'Asia/Kolkata',
-    contact_email: 'contact@gcrg.edu.in',
+    contact_email: 'admin@attendx.internal',
     contact_phone: '+91 522 000000',
     late_threshold_minutes: 15,
     qr_expiry_minutes: 30,
@@ -61,33 +62,34 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center text-slate-400 text-sm">Loading institute settings...</div>;
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Settings className="w-7 h-7 text-indigo-600" />
-          Institute Governance & Attendance Rules
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Configure institute identity, lecture grace windows, QR token expiry, and automated daily cutoff times.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Global Configuration
+          </span>
+          <h1 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <Settings className="w-6 h-6 text-[#3B82F6]" />
+            Institute & Policy Governance
+          </h1>
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Configure institutional identities, attendance cutoff thresholds, token expiry intervals, and timezone standards.
+          </p>
+        </div>
       </div>
 
       {feedback && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between text-sm ${
+          className={`p-4 rounded-xl flex items-center justify-between text-xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}
         >
           <span>{feedback.text}</span>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={() => setFeedback(null)} className="text-[#A1AEC2] hover:text-[#F8FAFC]">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -96,79 +98,79 @@ export const AdminSettings: React.FC = () => {
       <form onSubmit={handleSave} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Institute Profile Information */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Building2 className="w-5 h-5 text-indigo-600" />
+          <div className="bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-4">
+            <h2 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center gap-2 pb-3 border-b border-[#23334A]">
+              <Building2 className="w-4 h-4 text-[#3B82F6]" />
               Institute Profile & Contact
             </h2>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Institute Official Name *</label>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Institute Official Name *</label>
               <input
                 type="text"
                 required
                 value={settings.institute_name}
                 onChange={(e) => setSettings({ ...settings, institute_name: e.target.value })}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Campus Location & Address *</label>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Campus Location & Address *</label>
               <input
                 type="text"
                 required
                 value={settings.address}
                 onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Official Contact Email *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Official Contact Email *</label>
                 <input
                   type="email"
                   required
                   value={settings.contact_email}
                   onChange={(e) => setSettings({ ...settings, contact_email: e.target.value })}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone Number *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Contact Phone Number *</label>
                 <input
                   type="text"
                   required
                   value={settings.contact_phone}
                   onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })}
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Standard Timezone *</label>
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Standard Timezone *</label>
               <input
                 type="text"
                 required
                 value={settings.timezone}
                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
             </div>
           </div>
 
           {/* Attendance Rules & Cutoffs */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Clock className="w-5 h-5 text-indigo-600" />
+          <div className="bg-[#111D30] rounded-2xl border border-[#23334A] p-6 space-y-4">
+            <h2 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center gap-2 pb-3 border-b border-[#23334A]">
+              <Clock className="w-4 h-4 text-[#22D3EE]" />
               Attendance Engine Rules
             </h2>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
                 Late Arrival Grace Period (Minutes) *
               </label>
               <input
@@ -180,15 +182,15 @@ export const AdminSettings: React.FC = () => {
                 onChange={(e) =>
                   setSettings({ ...settings, late_threshold_minutes: parseInt(e.target.value) || 15 })
                 }
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Check-ins occurring after this many minutes from lecture start are automatically classified as LATE.
+              <p className="text-[10px] text-[#64748B] mt-1">
+                Check-ins occurring after this threshold from session start are classified as LATE.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
                 Dynamic QR Token Validity (Minutes) *
               </label>
               <input
@@ -198,15 +200,15 @@ export const AdminSettings: React.FC = () => {
                 required
                 value={settings.qr_expiry_minutes}
                 onChange={(e) => setSettings({ ...settings, qr_expiry_minutes: parseInt(e.target.value) || 30 })}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Maximum minutes a generated cryptographic QR code remains valid for student scanning.
+              <p className="text-[10px] text-[#64748B] mt-1">
+                Maximum duration a generated signed QR code remains active for student scanning.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
                 Face Verification Session Duration (Minutes) *
               </label>
               <input
@@ -218,13 +220,13 @@ export const AdminSettings: React.FC = () => {
                 onChange={(e) =>
                   setSettings({ ...settings, face_session_minutes: parseInt(e.target.value) || 45 })
                 }
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Default active duration for facial recognition sessions.</p>
+              <p className="text-[10px] text-[#64748B] mt-1">Default active window for facial recognition radar verification.</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
                 Daily Automatic Cutoff Time (24h format) *
               </label>
               <input
@@ -232,10 +234,10 @@ export const AdminSettings: React.FC = () => {
                 required
                 value={settings.daily_cutoff_time}
                 onChange={(e) => setSettings({ ...settings, daily_cutoff_time: e.target.value })}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs border border-[#23334A] rounded-xl p-2.5 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Background job marks absent any unrecorded students when this daily time is reached.
+              <p className="text-[10px] text-[#64748B] mt-1">
+                Background batch scheduler flags absent any unrecorded students when this daily time arrives.
               </p>
             </div>
           </div>
@@ -245,7 +247,7 @@ export const AdminSettings: React.FC = () => {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white rounded-xl text-xs font-semibold transition shadow-lg shadow-blue-500/20 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Updating Governance Settings...' : 'Save Institute Settings'}

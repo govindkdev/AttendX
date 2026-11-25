@@ -7,7 +7,7 @@ import { Footer } from '../src/components/common/Footer';
 import { AuthProvider } from '../src/features/authentication/AuthContext';
 
 describe('Public Branding & Institute Integrity (Bug 1 & Bug 2 Compliance)', () => {
-  it('renders AttendX brand, discreet lock icon, and does NOT display institute name in navbar', () => {
+  it('renders AttendX brand, single Login CTA, and does NOT display institute name in navbar', () => {
     render(
       <AuthProvider>
         <BrowserRouter>
@@ -17,8 +17,7 @@ describe('Public Branding & Institute Integrity (Bug 1 & Bug 2 Compliance)', () 
     );
 
     // Brand and CTA
-    expect(screen.getByText('Get Started')).toBeInTheDocument();
-    expect(screen.getByTitle('Administrative Access')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
 
     // Bug 1: Public navbar must NOT display institute name
     expect(screen.queryByText(/GCRG Group of Institutions/i)).not.toBeInTheDocument();

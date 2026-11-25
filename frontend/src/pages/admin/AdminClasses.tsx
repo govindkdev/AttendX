@@ -100,7 +100,7 @@ export const AdminClasses: React.FC = () => {
       setModalOpen(false);
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Timetable conflict rejected.');
+      setErrorMsg(err.message || 'Failed to schedule class. Check for timetable collisions.');
     } finally {
       setSubmitting(false);
     }
@@ -110,6 +110,9 @@ export const AdminClasses: React.FC = () => {
     e.preventDefault();
     if (!roomNumber.trim()) return;
 
+    setSubmitting(true);
+    setErrorMsg(null);
+
     try {
       await api.createClassroom({
         room_number: roomNumber.trim().toUpperCase(),
@@ -118,52 +121,72 @@ export const AdminClasses: React.FC = () => {
       });
       setRoomModalOpen(false);
       setRoomNumber('');
-      api.getClassrooms().then(setClassrooms);
+      await loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to create classroom');
+      setErrorMsg(err.message || 'Failed to add classroom.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDeleteTimetable = async () => {
+  const handleDeleteEntry = async () => {
     if (!deleteEntryId) return;
+    setSubmitting(true);
     try {
       await api.deleteTimetableEntry(deleteEntryId);
       setDeleteEntryId(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete timetable entry');
+      alert(err.message || 'Failed to delete schedule slot.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteRoom = async () => {
     if (!deleteRoomId) return;
+    setSubmitting(true);
     try {
       await api.deleteClassroom(deleteRoomId);
       setDeleteRoomId(null);
-      api.getClassrooms().then(setClassrooms);
+      await loadData();
     } catch (err: any) {
-      alert(err.message || 'Cannot delete classroom: Slots are currently scheduled in this room.');
+      alert(err.message || 'Cannot delete classroom: It may be booked in active timetable slots.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const filteredTimetable = timetable.filter((t) => {
-    const q = search.toLowerCase();
+    const term = search.toLowerCase();
     return (
-      WEEKDAYS[t.weekday]?.toLowerCase().includes(q) ||
-      t.subject_name?.toLowerCase().includes(q) ||
-      t.teacher_name?.toLowerCase().includes(q) ||
-      t.classroom_number?.toLowerCase().includes(q)
+      (WEEKDAYS[t.weekday] || '').toLowerCase().includes(term) ||
+      (t.subject_name || '').toLowerCase().includes(term) ||
+      (t.teacher_name || '').toLowerCase().includes(term) ||
+      (t.classroom_number || '').toLowerCase().includes(term)
     );
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Classes & Timetable Scheduling</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Assign teachers, classrooms, and courses to slots with automatic clash detection.
-          </p>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Institutional Scheduling
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Classes & Master Timetable
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">Configure weekly lecture schedules, classroom assignments, and room capacities.</p>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -173,34 +196,39 @@ export const AdminClasses: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search schedule..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-2.5" />
           </div>
 
           <button
-            onClick={() => setRoomModalOpen(true)}
-            className="inline-flex items-center px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors shrink-0"
+            onClick={() => {
+              setErrorMsg(null);
+              setRoomModalOpen(true);
+            }}
+            className="inline-flex items-center px-3 py-2 rounded-xl border border-[#23334A] bg-[#0D1525] hover:border-[#3B82F6] text-xs font-semibold text-[#F8FAFC] transition-colors shrink-0"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add Room
+            <Plus className="w-3.5 h-3.5 mr-1 text-[#3B82F6]" /> Add Room
           </button>
+
           <button
             onClick={() => {
               setErrorMsg(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors shrink-0"
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all shrink-0"
           >
-            <Plus className="w-4 h-4 mr-1.5" /> Schedule Slot
+            <Plus className="w-4 h-4 mr-1.5" /> Schedule Class
           </button>
         </div>
       </div>
 
-      {timetable.length > 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Main Timetable Table */}
+      {filteredTimetable.length > 0 ? (
+        <div className="bg-[#111D30] rounded-2xl border border-[#23334A] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+            <table className="min-w-full divide-y divide-[#23334A] text-left text-xs">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-3.5 px-6">Weekday</th>
                   <th className="py-3.5 px-6">Time Slot</th>
@@ -211,31 +239,31 @@ export const AdminClasses: React.FC = () => {
                   <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#23334A]">
                 {filteredTimetable.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-4 px-6 font-bold text-slate-900">
+                  <tr key={t.id} className="hover:bg-[#16243A]/60 transition-colors">
+                    <td className="py-4 px-6 font-bold text-[#F8FAFC]">
                       {WEEKDAYS[t.weekday]}
                     </td>
-                    <td className="py-4 px-6 font-mono font-semibold text-blue-700">
+                    <td className="py-4 px-6 font-mono font-semibold text-[#3B82F6]">
                       {t.start_time.slice(0, 5)} - {t.end_time.slice(0, 5)}
                     </td>
-                    <td className="py-4 px-6 font-semibold text-slate-900">
+                    <td className="py-4 px-6 font-semibold text-[#F8FAFC]">
                       {t.subject_name}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-medium">
+                    <td className="py-4 px-6 text-[#A1AEC2]">
                       {t.teacher_name}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-medium">
+                    <td className="py-4 px-6 text-[#A1AEC2]">
                       Room {t.classroom_number}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-semibold">
+                    <td className="py-4 px-6 text-[#A1AEC2] font-semibold">
                       Sem {t.semester}
                     </td>
                     <td className="py-4 px-6 text-right">
                       <button
                         onClick={() => setDeleteEntryId(t.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-[#16243A] transition-colors"
                         title="Delete Schedule Slot"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -262,10 +290,10 @@ export const AdminClasses: React.FC = () => {
 
       {/* Classrooms List Section */}
       {classrooms.length > 0 && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <div className="bg-[#111D30] p-6 rounded-2xl border border-[#23334A] space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
+            <h3 className="text-sm font-bold font-heading text-[#F8FAFC] flex items-center space-x-2">
+              <MapPin className="w-4 h-4 text-[#3B82F6]" />
               <span>Configured Classrooms & Lecture Halls ({classrooms.length})</span>
             </h3>
           </div>
@@ -273,15 +301,15 @@ export const AdminClasses: React.FC = () => {
             {classrooms.map((r) => (
               <div
                 key={r.id}
-                className="group relative p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all text-center"
+                className="group relative p-3 rounded-xl bg-[#0D1525] border border-[#23334A] hover:border-[#3B82F6]/50 transition-all text-center"
               >
-                <p className="font-mono font-bold text-sm text-slate-900">{r.room_number}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{r.building}</p>
-                <p className="text-[10px] text-slate-400 font-medium">Cap: {r.capacity}</p>
+                <p className="font-mono font-bold text-sm text-[#F8FAFC]">{r.room_number}</p>
+                <p className="text-[11px] text-[#A1AEC2] mt-0.5">{r.building}</p>
+                <p className="text-[10px] text-[#64748B] font-medium">Cap: {r.capacity}</p>
                 <button
                   type="button"
                   onClick={() => setDeleteRoomId(r.id)}
-                  className="absolute top-2 right-2 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 text-[#64748B] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete Room"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -294,21 +322,21 @@ export const AdminClasses: React.FC = () => {
 
       {/* Schedule Class Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Schedule Class Slot</h3>
-            <p className="text-xs text-slate-500 mb-6">Assign faculty, room, and batch time with anti-collision validation.</p>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Schedule Class Slot</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Assign faculty, room, and batch time with anti-collision validation.</p>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -316,14 +344,14 @@ export const AdminClasses: React.FC = () => {
             <form onSubmit={handleCreateTimetable} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
                     Day of Week *
                   </label>
                   <select
                     value={weekday}
                     onChange={(e) => setWeekday(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
                     {WEEKDAYS.slice(0, 6).map((d, i) => (
                       <option key={d} value={i}>{d}</option>
@@ -333,7 +361,7 @@ export const AdminClasses: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
                       Start Time *
                     </label>
                     <input
@@ -341,11 +369,11 @@ export const AdminClasses: React.FC = () => {
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
                       required
-                      className="w-full px-2 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      className="w-full px-2 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
                       End Time *
                     </label>
                     <input
@@ -353,127 +381,138 @@ export const AdminClasses: React.FC = () => {
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
                       required
-                      className="w-full px-2 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      className="w-full px-2 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Course Program *
-                  </label>
-                  <select
-                    value={courseId}
-                    onChange={(e) => setCourseId(Number(e.target.value))}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="">Select Course</option>
-                    {courses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
+                  Subject *
+                </label>
+                <select
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(Number(e.target.value))}
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                >
+                  <option value="">Select Subject</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.code}) — Sem {s.semester}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Branch *
-                  </label>
-                  <select
-                    value={branchId}
-                    onChange={(e) => setBranchId(Number(e.target.value))}
-                    disabled={!courseId}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white disabled:bg-slate-100"
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Subject *
-                  </label>
-                  <select
-                    value={subjectId}
-                    onChange={(e) => setSubjectId(Number(e.target.value))}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="">Select Subject</option>
-                    {subjects.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name} ({s.code}) - Sem {s.semester}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
                     Faculty Instructor *
                   </label>
                   <select
                     value={teacherId}
                     onChange={(e) => setTeacherId(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
-                    <option value="">Select Faculty</option>
+                    <option value="">Select Instructor</option>
                     {teachers.map((t) => (
-                      <option key={t.profile_id} value={t.profile_id}>{t.full_name} ({t.employee_code})</option>
+                      <option key={t.id} value={t.profile_id}>
+                        {t.full_name} ({t.employee_code})
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
                     Classroom *
                   </label>
                   <select
                     value={classroomId}
                     onChange={(e) => setClassroomId(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
                     <option value="">Select Classroom</option>
                     {classrooms.map((r) => (
-                      <option key={r.id} value={r.id}>Room {r.room_number} ({r.building})</option>
+                      <option key={r.id} value={r.id}>
+                        {r.room_number} ({r.building} · Cap {r.capacity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
+                    Degree / Course *
+                  </label>
+                  <select
+                    value={courseId}
+                    onChange={(e) => setCourseId(Number(e.target.value))}
+                    required
+                    className="w-full px-2.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    <option value="">Course</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Semester
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
+                    Branch *
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
+                  <select
+                    value={branchId}
+                    onChange={(e) => setBranchId(Number(e.target.value))}
+                    required
+                    disabled={!courseId}
+                    className="w-full px-2.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] disabled:opacity-50"
+                  >
+                    <option value="">Branch</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-1">
+                    Semester *
+                  </label>
+                  <select
                     value={semester}
                     onChange={(e) => setSemester(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                    className="w-full px-2.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>Sem {s}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  {submitting ? 'Validating Conflicts...' : 'Save Schedule Slot'}
+                  {submitting ? 'Scheduling...' : 'Commit Class Slot'}
                 </button>
               </div>
             </form>
@@ -483,61 +522,69 @@ export const AdminClasses: React.FC = () => {
 
       {/* Add Classroom Modal */}
       {roomModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] relative">
             <button
               onClick={() => setRoomModalOpen(false)}
-              className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Classroom</h3>
-            <form onSubmit={handleCreateRoom} className="space-y-3">
+
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Add Classroom</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Define lecture room identifier and seating capacity.</p>
+
+            <form onSubmit={handleCreateRoom} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Room Number *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Room Number *</label>
                 <input
                   type="text"
                   value={roomNumber}
-                  onChange={(e) => setRoomNumber(e.target.value)}
-                  placeholder="e.g. LT-101"
+                  onChange={(e) => setRoomNumber(e.target.value.toUpperCase())}
+                  placeholder="e.g. LH-101"
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 uppercase"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Building</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Building / Block</label>
                 <input
                   type="text"
                   value={building}
                   onChange={(e) => setBuilding(e.target.value)}
-                  placeholder="e.g. Ramanujan Block"
-                  required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600"
+                  placeholder="Academic Block A"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Seating Capacity</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Seating Capacity</label>
                 <input
                   type="number"
+                  min="1"
+                  max="500"
                   value={capacity}
                   onChange={(e) => setCapacity(Number(e.target.value))}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
-              <div className="pt-2 flex justify-end space-x-2">
+
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setRoomModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  Save Room
+                  {submitting ? 'Adding...' : 'Add Room'}
                 </button>
               </div>
             </form>
@@ -545,62 +592,66 @@ export const AdminClasses: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Timetable Entry Confirmation */}
+      {/* Delete Entry Modal */}
       {deleteEntryId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Remove Class Schedule Slot?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to remove this timetable slot from the schedule?
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Schedule Slot?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove this timetable slot?
             </p>
+
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
                 onClick={() => setDeleteEntryId(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleDeleteTimetable}
+                onClick={handleDeleteEntry}
+                disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm"
               >
-                Delete Slot
+                {submitting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Room Confirmation */}
+      {/* Delete Room Modal */}
       {deleteRoomId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Classroom?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to delete this room? It will be blocked if active timetable slots are scheduled in it.
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Classroom?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove this classroom record?
             </p>
+
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
                 onClick={() => setDeleteRoomId(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDeleteRoom}
+                disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm"
               >
-                Delete Room
+                {submitting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

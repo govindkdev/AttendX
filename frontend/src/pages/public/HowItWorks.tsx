@@ -1,75 +1,88 @@
 import React from 'react';
-import { ArrowDown, CheckCircle2, Shield, Users, Clock, Database, Smartphone } from 'lucide-react';
+import { Camera, QrCode, MapPin, CheckCircle2, ShieldCheck, Clock, FileSpreadsheet } from 'lucide-react';
+import { ScrollReveal } from '@/components/common/ScrollReveal';
 
 export const HowItWorks: React.FC = () => {
   const steps = [
     {
       num: '01',
-      title: 'Academic Structure & Timetable Setup',
-      actor: 'Institute Administrator',
-      desc: 'The administrator provisions departments, courses, branches, classrooms, and subjects. Timetable slots are configured with automatic conflict detection to prevent double-booking.',
-      icon: Database,
+      title: 'Faculty Starts an Attendance Session',
+      actor: 'Teacher / Faculty',
+      desc: 'The instructor launches a scheduled attendance session from their faculty dashboard, choosing Face Attendance or projecting a rotating QR code in the classroom.',
+      icon: Clock,
+      color: 'text-[#3B82F6] bg-blue-500/10 border-blue-500/20',
     },
     {
       num: '02',
-      title: 'Teacher Initiates Attendance Session',
-      actor: 'Authorized Teacher',
-      desc: 'Teacher logs into the portal and initiates a scheduled lecture session. The teacher selects whether to project an HMAC-signed dynamic QR token or enable Face Verification.',
-      icon: Clock,
+      title: 'Student Verifies Identity',
+      actor: 'Enrolled Student',
+      desc: 'The student opens their portal on their mobile device or laptop and verifies identity using the available attendance method (facial biometric scan or scanning the dynamic session QR code).',
+      icon: Camera,
+      color: 'text-[#22D3EE] bg-cyan-500/10 border-cyan-500/20',
     },
     {
       num: '03',
-      title: 'Student Identity & Proximity Verification',
-      actor: 'Enrolled Student',
-      desc: 'The student opens their mobile or laptop browser. The device requests camera and GPS permission. The frame is checked for quality and matched against the student’s biometric template.',
-      icon: Smartphone,
+      title: 'The System Checks Permitted Conditions',
+      actor: 'AttendX Validation Engine',
+      desc: 'AttendX verifies biometric similarity, confirms the student is within the campus GPS geofence perimeter, checks time boundaries, and ensures the session is currently active.',
+      icon: ShieldCheck,
+      color: 'text-[#8B5CF6] bg-purple-500/10 border-purple-500/20',
     },
     {
       num: '04',
-      title: 'Server-Side Cryptographic Validation',
-      actor: 'FastAPI Backend Engine',
-      desc: 'Backend verifies biometric similarity >= 65%, checks GPS coordinates against the 200m campus perimeter, ensures the session is ACTIVE, and enforces duplicate rejection.',
-      icon: Shield,
+      title: 'Attendance is Recorded',
+      actor: 'Attendance Core',
+      desc: 'The attendance record is securely persisted in the database with status (Present or Late), verification method, and timestamp, instantly updating live dashboard summaries.',
+      icon: CheckCircle2,
+      color: 'text-[#22C55E] bg-emerald-500/10 border-emerald-500/20',
     },
     {
       num: '05',
-      title: 'Transactional Persistence & Live Updates',
-      actor: 'PostgreSQL Database & Real-Time Sync',
-      desc: 'Attendance status (Present or Late) is committed transactionally. Dashboards update immediately, audit logs are recorded, and parent notifications queue for completed lectures.',
-      icon: CheckCircle2,
+      title: 'Faculty and Administrators Review Reports',
+      actor: 'Faculty & Administration',
+      desc: 'Faculty and administrators review verified attendance records, export academic compliance spreadsheets, monitor shortages below 75%, and manage parent alerts.',
+      icon: FileSpreadsheet,
+      color: 'text-[#F59E0B] bg-amber-500/10 border-amber-500/20',
     },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-      <div className="text-center max-w-2xl mx-auto space-y-4">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 space-y-16 text-[#F8FAFC]">
+      <ScrollReveal className="text-center max-w-2xl mx-auto space-y-4">
+        <span className="text-xs font-bold text-[#3B82F6] tracking-wider uppercase">
+          Step-by-Step Architecture
+        </span>
+        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#F8FAFC]">
           How AttendX Works
         </h1>
-        <p className="text-lg text-slate-600">
-          A seamless, fraud-resistant lifecycle from timetable scheduling to parent notifications.
+        <p className="text-base sm:text-lg text-[#A1AEC2] leading-relaxed">
+          A clear, disciplined 5-step workflow ensuring every attendance record is verified, tamper-resistant, and actionable.
         </p>
-      </div>
+      </ScrollReveal>
 
-      <div className="relative border-l-2 border-blue-200 ml-4 md:ml-32 space-y-12">
+      <div className="relative border-l-2 border-[#23334A] ml-4 md:ml-12 space-y-10">
         {steps.map((s, idx) => {
           const Icon = s.icon;
           return (
-            <div key={idx} className="relative pl-8 md:pl-12 group">
-              {/* Step indicator node */}
-              <div className="absolute -left-[17px] top-1.5 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md border-4 border-white">
-                {s.num}
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow space-y-2">
-                <div className="flex items-center space-x-2 text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                  <Icon className="w-4 h-4" />
-                  <span>{s.actor}</span>
+            <ScrollReveal key={idx} delay={idx * 100}>
+              <div className="relative pl-8 md:pl-12 group">
+                {/* Step indicator node */}
+                <div className="absolute -left-[17px] top-1 w-8 h-8 rounded-full bg-[#111D30] text-[#3B82F6] border-2 border-[#3B82F6] flex items-center justify-center font-stats font-bold text-xs shadow-md">
+                  {s.num}
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">{s.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{s.desc}</p>
+
+                <div className="bg-[#111D30] rounded-2xl p-6 sm:p-7 border border-[#23334A] hover:border-[#3B82F6]/40 transition-colors space-y-2.5">
+                  <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-[#3B82F6]">
+                    <div className={`p-1 rounded-md border ${s.color}`}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <span>{s.actor}</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-[#F8FAFC] tracking-tight">{s.title}</h3>
+                  <p className="text-sm text-[#A1AEC2] leading-relaxed">{s.desc}</p>
+                </div>
               </div>
-            </div>
+            </ScrollReveal>
           );
         })}
       </div>

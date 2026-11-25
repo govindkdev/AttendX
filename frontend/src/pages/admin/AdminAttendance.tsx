@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import type { AttendanceRecord, Subject } from '@/types';
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   CalendarCheck,
   Search,
@@ -16,6 +17,8 @@ import {
   AlertCircle,
   X,
   RefreshCw,
+  ShieldCheck,
+  Compass
 } from 'lucide-react';
 
 export const AdminAttendance: React.FC = () => {
@@ -81,18 +84,17 @@ export const AdminAttendance: React.FC = () => {
       setCorrectionReason('');
       await loadData();
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.message || 'Failed to apply attendance correction.' });
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to apply correction' });
     } finally {
       setSubmittingCorrection(false);
     }
   };
 
-  const filteredRecords = records.filter((r) => {
-    if (selectedMethod && r.verification_method !== selectedMethod) return false;
+  const filteredRecords = records.filter((rec) => {
+    if (selectedMethod && rec.verification_method !== selectedMethod) return false;
     return true;
   });
 
-  const totalCount = records.length;
   const presentCount = records.filter((r) => r.status === 'PRESENT').length;
   const lateCount = records.filter((r) => r.status === 'LATE').length;
   const absentCount = records.filter((r) => r.status === 'ABSENT').length;
@@ -100,67 +102,65 @@ export const AdminAttendance: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <CalendarCheck className="w-7 h-7 text-indigo-600" />
-            Institutional Attendance
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Real-time attendance logs, multi-factor verification verification, and audited status corrections.
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Master Attendance Registry
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Institutional Attendance Records
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Comprehensive audit-ready attendance stream with multi-factor verification vectors.
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="inline-flex items-center gap-2 px-3.5 py-2 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg shadow-sm transition"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
       </div>
 
       {statusMsg && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between text-sm ${
+          className={`p-4 rounded-xl flex items-center justify-between text-xs ${
             statusMsg.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+              : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
           }`}
         >
-          <span>{statusMsg.text}</span>
-          <button onClick={() => setStatusMsg(null)}>
+          <div className="flex items-center space-x-2">
+            {statusMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            <span>{statusMsg.text}</span>
+          </div>
+          <button onClick={() => setStatusMsg(null)} className="text-[#A1AEC2] hover:text-[#F8FAFC]">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Evaluated</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</p>
+      {/* Aggregate Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A]">
+          <span className="text-[11px] font-semibold text-[#A1AEC2] uppercase block">Total Records</span>
+          <p className="text-2xl font-extrabold font-stats text-[#F8FAFC] mt-1">{records.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Present</span>
-          <p className="text-2xl font-bold text-emerald-700 mt-1">{presentCount}</p>
+        <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A]">
+          <span className="text-[11px] font-semibold text-emerald-400 uppercase block">Present</span>
+          <p className="text-2xl font-extrabold font-stats text-emerald-400 mt-1">{presentCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">Late</span>
-          <p className="text-2xl font-bold text-amber-700 mt-1">{lateCount}</p>
+        <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A]">
+          <span className="text-[11px] font-semibold text-amber-400 uppercase block">Late</span>
+          <p className="text-2xl font-extrabold font-stats text-amber-400 mt-1">{lateCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-medium text-rose-600 uppercase tracking-wider">Absent</span>
-          <p className="text-2xl font-bold text-rose-700 mt-1">{absentCount}</p>
+        <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A]">
+          <span className="text-[11px] font-semibold text-rose-400 uppercase block">Absent</span>
+          <p className="text-2xl font-extrabold font-stats text-rose-400 mt-1">{absentCount}</p>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-3">
+      <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A] flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[200px]">
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value ? Number(e.target.value) : '')}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
             <option value="">All Subjects</option>
             {subjects.map((sub) => (
@@ -175,7 +175,7 @@ export const AdminAttendance: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
             <option value="">All Statuses</option>
             <option value="PRESENT">Present</option>
@@ -189,7 +189,7 @@ export const AdminAttendance: React.FC = () => {
           <select
             value={selectedMethod}
             onChange={(e) => setSelectedMethod(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
             <option value="">All Methods</option>
             <option value="FACE">Face Recognition</option>
@@ -203,7 +203,7 @@ export const AdminAttendance: React.FC = () => {
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           />
         </div>
 
@@ -215,7 +215,7 @@ export const AdminAttendance: React.FC = () => {
               setSelectedMethod('');
               setDateFilter('');
             }}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1"
+            className="text-xs text-[#3B82F6] hover:text-[#60A5FA] font-medium px-2 py-1"
           >
             Clear Filters
           </button>
@@ -223,9 +223,9 @@ export const AdminAttendance: React.FC = () => {
       </div>
 
       {/* Attendance Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-[#111D30] border border-[#23334A] rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Loading attendance records...</div>
+          <div className="p-12 text-center text-[#A1AEC2] text-xs">Loading attendance records...</div>
         ) : filteredRecords.length === 0 ? (
           <EmptyState
             title="No attendance records found"
@@ -234,64 +234,52 @@ export const AdminAttendance: React.FC = () => {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <table className="w-full text-left text-xs text-[#A1AEC2]">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase font-semibold border-b border-[#23334A]">
                 <tr>
-                  <th className="px-5 py-3">Student</th>
-                  <th className="px-5 py-3">Subject & Session</th>
-                  <th className="px-5 py-3">Timestamp</th>
-                  <th className="px-5 py-3">Method</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Remarks / GPS</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="px-5 py-3.5">Student</th>
+                  <th className="px-5 py-3.5">Subject & Session</th>
+                  <th className="px-5 py-3.5">Timestamp</th>
+                  <th className="px-5 py-3.5">Method</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Remarks / GPS</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#23334A]">
                 {filteredRecords.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-50/75 transition">
+                  <tr key={rec.id} className="hover:bg-[#16243A]/60 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="font-medium text-slate-900">{rec.student_name || `ID #${rec.student_id}`}</div>
-                      <div className="text-xs text-slate-400">{rec.student_roll || `Roll: —`}</div>
+                      <div className="font-semibold text-[#F8FAFC]">{rec.student_name || `ID #${rec.student_id}`}</div>
+                      <div className="text-[11px] text-[#64748B]">{rec.student_roll || `Roll: —`}</div>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="font-medium text-slate-900">{rec.subject_name || `Session #${rec.session_id}`}</div>
-                      <div className="text-xs text-slate-500">{rec.subject_code}</div>
+                      <div className="font-semibold text-[#F8FAFC]">{rec.subject_name || `Session #${rec.session_id}`}</div>
+                      <div className="text-[11px] text-[#A1AEC2]">{rec.subject_code}</div>
                     </td>
-                    <td className="px-5 py-4 text-xs text-slate-500">
+                    <td className="px-5 py-4 text-[11px] text-[#A1AEC2]">
                       {rec.timestamp ? new Date(rec.timestamp).toLocaleString('en-IN') : '—'}
                     </td>
                     <td className="px-5 py-4">
                       {rec.verification_method === 'FACE' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20">
                           <Camera className="w-3 h-3" /> Face
                         </span>
                       ) : rec.verification_method === 'QR' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
                           <QrCode className="w-3 h-3" /> QR
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#16243A] text-[#A1AEC2] border border-[#23334A]">
                           <Edit3 className="w-3 h-3" /> Manual
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      {rec.status === 'PRESENT' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" /> Present
-                        </span>
-                      ) : rec.status === 'LATE' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3" /> Late
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          <XCircle className="w-3 h-3" /> Absent
-                        </span>
-                      )}
+                      <StatusBadge status={rec.status as any} />
                     </td>
-                    <td className="px-5 py-4 text-xs text-slate-500 max-w-xs truncate">
-                      {rec.remarks || (rec.gps_verified ? 'GPS Verified' : 'Standard')}
+                    <td className="px-5 py-4 text-[11px] text-[#A1AEC2] max-w-xs truncate">
+                      {rec.remarks || (rec.gps_verified ? 'GPS Verified' : 'Standard Check-in')}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <button
@@ -300,11 +288,10 @@ export const AdminAttendance: React.FC = () => {
                           setNewStatus(rec.status);
                           setCorrectionReason('');
                         }}
-                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold p-1 hover:bg-indigo-50 rounded transition"
-                        title="Audited Status Correction"
+                        className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#F59E0B] hover:bg-[#16243A] transition-colors"
+                        title="Audited Attendance Override"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        Correct
+                        <Edit3 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -315,84 +302,77 @@ export const AdminAttendance: React.FC = () => {
         )}
       </div>
 
-      {/* Audited Status Correction Modal */}
+      {/* Audited Correction Modal */}
       {editingRecord && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-indigo-600" />
-                Audited Status Correction
-              </h3>
-              <button
-                onClick={() => setEditingRecord(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-md"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#23334A] relative">
+            <button
+              onClick={() => setEditingRecord(null)}
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-            <form onSubmit={handleCorrection} className="p-6 space-y-4">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-                <div>
-                  <span className="font-semibold text-slate-700">Student:</span>{' '}
-                  {editingRecord.student_name || `#${editingRecord.student_id}`}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Subject:</span>{' '}
-                  {editingRecord.subject_name || `Session #${editingRecord.session_id}`}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Current Status:</span>{' '}
-                  <span className="font-bold text-slate-900">{editingRecord.status}</span>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1 flex items-center space-x-2">
+              <ShieldCheck className="w-5 h-5 text-[#F59E0B]" />
+              <span>Audited Attendance Correction</span>
+            </h3>
+            <p className="text-xs text-[#A1AEC2] mb-4">
+              Override attendance for <span className="font-semibold text-[#F8FAFC]">{editingRecord.student_name}</span> in {editingRecord.subject_code}.
+            </p>
+
+            <form onSubmit={handleCorrection} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">New Status *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['PRESENT', 'LATE', 'ABSENT'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setNewStatus(st)}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                        newStatus === st
+                          ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-[#F8FAFC]'
+                          : 'border-[#23334A] bg-[#0D1525] text-[#A1AEC2] hover:border-[#F59E0B]/40'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">New Status *</label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="PRESENT">PRESENT</option>
-                  <option value="LATE">LATE</option>
-                  <option value="ABSENT">ABSENT</option>
-                  <option value="EXCUSED">EXCUSED</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Correction Justification / Audit Reason *
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
+                  Mandatory Audit Justification *
                 </label>
                 <textarea
-                  required
                   rows={3}
                   value={correctionReason}
                   onChange={(e) => setCorrectionReason(e.target.value)}
-                  placeholder="e.g. Validated medical slip or classroom attendance discrepancy confirmed by faculty."
-                  className="w-full text-sm border border-slate-300 rounded-lg p-3 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Official justification (e.g. Approved medical certificate verified by Dean)..."
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  This action is permanently logged with your administrator user ID and timestamp.
+                <p className="text-[10px] text-[#64748B] mt-1">
+                  Permanently archived to tamper-evident audit logs with administrator credentials.
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setEditingRecord(null)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingCorrection}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow-sm disabled:opacity-50"
+                  disabled={submittingCorrection || !correctionReason.trim()}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-amber-500/20"
                 >
-                  {submittingCorrection ? 'Saving...' : 'Apply Correction'}
+                  {submittingCorrection ? 'Logging...' : 'Commit Correction'}
                 </button>
               </div>
             </form>

@@ -39,7 +39,7 @@ describe('Navbar Active Link Highlighting (Fix 4 Compliance)', () => {
     });
   });
 
-  it('preserves the lock icon and Get Started CTA button', () => {
+  it('renders the single premium Login CTA button without Get Started or separate Lock icon', () => {
     render(
       <AuthProvider>
         <MemoryRouter initialEntries={['/']}>
@@ -48,7 +48,8 @@ describe('Navbar Active Link Highlighting (Fix 4 Compliance)', () => {
       </AuthProvider>
     );
 
-    expect(screen.getByText('Get Started')).toBeInTheDocument();
-    expect(screen.getByTitle('Administrative Access')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
+    expect(screen.queryByText('Get Started')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Administrative Access')).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import type { TeacherListItem, Department } from '@/types';
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Users,
   Plus,
@@ -14,6 +15,10 @@ import {
   Trash2,
   Copy,
   Check,
+  Building2,
+  Mail,
+  Phone,
+  GraduationCap
 } from 'lucide-react';
 
 export const AdminTeachers: React.FC = () => {
@@ -99,21 +104,28 @@ export const AdminTeachers: React.FC = () => {
         full_name: fullName.trim(),
         email: email.trim(),
         department_id: Number(departmentId),
-        designation,
+        designation: designation.trim() || undefined,
         qualification: qualification.trim() || undefined,
         phone_number: phoneNumber.trim() || undefined,
-        initial_password: initialPassword || 'Teacher@123',
+        password: initialPassword.trim() || undefined,
       });
+
       setModalOpen(false);
+      setCreatedTeacher(newTch);
+
+      // Reset
       setEmployeeCode('');
       setFullName('');
       setEmail('');
-      setPhoneNumber('');
+      setDepartmentId('');
+      setDesignation('Assistant Professor');
       setQualification('');
-      setCreatedTeacher(newTch);
+      setPhoneNumber('');
+      setInitialPassword('Teacher@123');
+
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to create teacher.');
+      setErrorMsg(err.message || 'Failed to create teacher account.');
     } finally {
       setSubmitting(false);
     }
@@ -122,23 +134,23 @@ export const AdminTeachers: React.FC = () => {
   const openEditModal = (t: TeacherListItem) => {
     setSelectedTeacher(t);
     setEditFullName(t.full_name);
-    setEditDesignation(t.designation);
+    setEditDesignation(t.designation || 'Assistant Professor');
     setEditQualification(t.qualification || '');
     setEditPhoneNumber(t.phone_number || '');
-    setErrorMsg(null);
     setEditModalOpen(true);
   };
 
   const handleUpdateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTeacher || !editFullName.trim()) return;
+    if (!selectedTeacher) return;
 
     setSubmitting(true);
     setErrorMsg(null);
+
     try {
       await api.updateTeacher(selectedTeacher.profile_id, {
         full_name: editFullName.trim(),
-        designation: editDesignation.trim(),
+        designation: editDesignation.trim() || undefined,
         qualification: editQualification.trim() || undefined,
         phone_number: editPhoneNumber.trim() || undefined,
       });
@@ -146,7 +158,7 @@ export const AdminTeachers: React.FC = () => {
       setSelectedTeacher(null);
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update faculty member.');
+      setErrorMsg(err.message || 'Failed to update faculty profile.');
     } finally {
       setSubmitting(false);
     }
@@ -166,7 +178,7 @@ export const AdminTeachers: React.FC = () => {
       setSelectedTeacher(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Cannot delete faculty: Active timetable slots or lecture sessions are linked to this teacher.');
+      alert(err.message || 'Failed to delete faculty member.');
     } finally {
       setSubmitting(false);
     }
@@ -178,23 +190,38 @@ export const AdminTeachers: React.FC = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const filtered = teachers.filter((t) => {
-    const q = search.toLowerCase();
+  const filteredTeachers = teachers.filter((t) => {
+    if (!search) return true;
+    const term = search.toLowerCase();
     return (
-      t.full_name.toLowerCase().includes(q) ||
-      t.employee_code.toLowerCase().includes(q) ||
-      t.email.toLowerCase().includes(q) ||
-      (t.department_name && t.department_name.toLowerCase().includes(q))
+      t.full_name.toLowerCase().includes(term) ||
+      t.employee_code.toLowerCase().includes(term) ||
+      t.email.toLowerCase().includes(term) ||
+      (t.department_name && t.department_name.toLowerCase().includes(term))
     );
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header and Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Faculty Directory & Assignments</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Manage instructional staff, departments, and active teaching statuses.
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Faculty Directory
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Faculty Members & Instructors
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Provision faculty accounts, assign departments, and maintain teaching authorizations.
           </p>
         </div>
 
@@ -205,9 +232,9 @@ export const AdminTeachers: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search faculty..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-2.5" />
           </div>
 
           <button
@@ -215,20 +242,21 @@ export const AdminTeachers: React.FC = () => {
               setErrorMsg(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors shrink-0"
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all shrink-0"
           >
-            <Plus className="w-4 h-4 mr-1.5" /> Add Faculty Member
+            <Plus className="w-4 h-4 mr-1.5" /> Add Faculty
           </button>
         </div>
       </div>
 
-      {teachers.length > 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Main Table */}
+      {filteredTeachers.length > 0 ? (
+        <div className="bg-[#111D30] rounded-2xl border border-[#23334A] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+            <table className="min-w-full divide-y divide-[#23334A] text-left text-xs">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase tracking-wider font-semibold">
                 <tr>
-                  <th className="py-3.5 px-6">Faculty Name</th>
+                  <th className="py-3.5 px-6">Faculty Member</th>
                   <th className="py-3.5 px-6">Employee Code</th>
                   <th className="py-3.5 px-6">Department</th>
                   <th className="py-3.5 px-6">Designation</th>
@@ -236,45 +264,31 @@ export const AdminTeachers: React.FC = () => {
                   <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filtered.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
+              <tbody className="divide-y divide-[#23334A]">
+                {filteredTeachers.map((t) => (
+                  <tr key={t.id} className="hover:bg-[#16243A]/60 transition-colors">
                     <td className="py-4 px-6">
-                      <div className="font-bold text-slate-900">{t.full_name}</div>
-                      <div className="text-[11px] text-slate-500">{t.email}</div>
+                      <div className="font-semibold text-[#F8FAFC]">{t.full_name}</div>
+                      <div className="text-[11px] text-[#A1AEC2]">{t.email}</div>
                     </td>
-                    <td className="py-4 px-6 font-mono font-semibold text-slate-800">
-                      <div className="flex items-center space-x-1.5">
-                        <span>{t.employee_code}</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(t.employee_code)}
-                          className="text-slate-400 hover:text-blue-600"
-                          title="Copy Code"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
+                    <td className="py-4 px-6 font-mono font-semibold text-[#3B82F6]">
+                      {t.employee_code}
                     </td>
-                    <td className="py-4 px-6 text-slate-600">
-                      {t.department_name || 'Department'}
+                    <td className="py-4 px-6 text-[#A1AEC2]">
+                      {t.department_name || 'N/A'}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-medium">
-                      {t.designation}
+                    <td className="py-4 px-6 text-[#A1AEC2]">
+                      {t.designation || 'Instructor'}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {t.is_active ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
+                      <StatusBadge status={t.is_active ? 'ACTIVE' : 'INACTIVE'} />
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
+                      <div className="flex items-center justify-end space-x-1">
                         <button
                           onClick={() => openEditModal(t)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                          title="Edit Faculty Details"
+                          className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#3B82F6] hover:bg-[#16243A] transition-colors"
+                          title="Edit Faculty Info"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -282,17 +296,17 @@ export const AdminTeachers: React.FC = () => {
                           onClick={() => handleToggleStatus(t.profile_id, t.is_active)}
                           className={`p-1.5 rounded-lg transition-colors ${
                             t.is_active
-                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                              ? 'text-[#64748B] hover:text-amber-400 hover:bg-[#16243A]'
+                              : 'text-[#64748B] hover:text-emerald-400 hover:bg-[#16243A]'
                           }`}
-                          title={t.is_active ? 'Deactivate' : 'Activate'}
+                          title={t.is_active ? 'Deactivate Account' : 'Activate Account'}
                         >
                           <Power className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openDeleteModal(t)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Delete Faculty"
+                          className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-[#16243A] transition-colors"
+                          title="Delete Faculty Member"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -308,7 +322,7 @@ export const AdminTeachers: React.FC = () => {
         <EmptyState
           icon={Users}
           title="No faculty members found"
-          description="The faculty directory is empty. Click 'Add Faculty Member' to register instructional staff."
+          description="Zero faculty records match this search. Click 'Add Faculty' to provision instructor credentials."
           actionText="Add Faculty Member"
           onAction={() => {
             setErrorMsg(null);
@@ -319,130 +333,125 @@ export const AdminTeachers: React.FC = () => {
 
       {/* Add Teacher Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Add Faculty Member</h3>
-            <p className="text-xs text-slate-500 mb-6">Create teacher identity with departmental assignment.</p>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Provision Faculty Member</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Create authorized faculty account for session attendance and course conduction.</p>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             <form onSubmit={handleCreateTeacher} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Employee Code <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={employeeCode}
-                    onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
-                    placeholder="Auto-generated if blank (TCH-YYYY-XXXX)"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none uppercase"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Leave blank to auto-generate unique sequence</p>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
+                  Employee Code <span className="text-[#64748B] font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={employeeCode}
+                  onChange={(e) => setEmployeeCode(e.target.value)}
+                  placeholder="Auto-generated if blank (TCH-YYYY-XXXX)"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Dr. Ramesh Kumar"
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Dr. Jane Smith"
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Institutional Email *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="faculty@institution.edu"
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Department *</label>
+                <select
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(Number(e.target.value))}
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Official Email *</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Designation</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. ramesh@institution.edu"
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department *</label>
-                  <select
-                    value={departmentId}
-                    onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : '')}
-                    required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
-                  <select
+                    type="text"
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="Professor">Professor</option>
-                    <option value="Associate Professor">Associate Professor</option>
-                    <option value="Assistant Professor">Assistant Professor</option>
-                    <option value="Lecturer">Lecturer</option>
-                    <option value="Lab Instructor">Lab Instructor</option>
-                  </select>
+                    placeholder="Assistant Professor"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Qualification</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Qualification</label>
                   <input
                     type="text"
                     value={qualification}
                     onChange={(e) => setQualification(e.target.value)}
-                    placeholder="e.g. Ph.D, M.Tech"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+91..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="Ph.D., M.Tech"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Initial Password</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="+91 9876543210"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">
+                  Initial Password <span className="text-[#64748B] font-normal">(Default: Teacher@123)</span>
+                </label>
                 <input
                   type="text"
                   value={initialPassword}
                   onChange={(e) => setInitialPassword(e.target.value)}
                   placeholder="Teacher@123"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
@@ -450,16 +459,16 @@ export const AdminTeachers: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  {submitting ? 'Creating...' : 'Register Faculty Member'}
+                  {submitting ? 'Provisioning...' : 'Provision Faculty'}
                 </button>
               </div>
             </form>
@@ -467,47 +476,36 @@ export const AdminTeachers: React.FC = () => {
         </div>
       )}
 
-      {/* Creation Success Modal */}
+      {/* Success Modal Showing Issued Employee Code */}
       {createdTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-7 h-7" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-
-            <h3 className="text-xl font-bold text-slate-900">Faculty Provisioned Successfully</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Account created for <span className="font-semibold text-slate-800">{createdTeacher.full_name}</span>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC]">Faculty Account Provisioned!</h3>
+            <p className="text-xs text-[#A1AEC2] mt-1">
+              Provide this official Employee ID to the faculty member to log in to AttendX.
             </p>
 
-            <div className="my-5 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                Allocated Employee Code
-              </p>
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-xl font-mono font-black text-blue-700">
-                  {createdTeacher.employee_code}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(createdTeacher.employee_code)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white border border-slate-200 transition-colors"
-                  title="Copy Employee Code"
-                >
-                  {copiedCode ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-2">
-                Faculty can sign in at <span className="font-mono text-slate-700">/login?role=teacher</span> with this code or their email.
-              </p>
+            <div className="my-6 p-4 rounded-xl bg-[#0D1525] border border-[#23334A] flex items-center justify-between">
+              <span className="font-mono font-bold text-lg text-[#F8FAFC]">{createdTeacher.employee_code}</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(createdTeacher.employee_code)}
+                className="px-3 py-1.5 rounded-lg bg-[#16243A] border border-[#23334A] text-[#F8FAFC] hover:border-[#3B82F6] text-xs font-semibold inline-flex items-center"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                {copiedCode ? 'Copied' : 'Copy'}
+              </button>
             </div>
 
             <button
               type="button"
               onClick={() => setCreatedTeacher(null)}
-              className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
+              className="w-full py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-xs font-semibold shadow-sm transition-colors"
             >
-              Done
+              Done & Return to Directory
             </button>
           </div>
         </div>
@@ -515,92 +513,82 @@ export const AdminTeachers: React.FC = () => {
 
       {/* Edit Teacher Modal */}
       {editModalOpen && selectedTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => {
                 setEditModalOpen(false);
                 setSelectedTeacher(null);
               }}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Edit Faculty Profile</h3>
-            <p className="text-xs text-slate-500 mb-5">
-              Editing: <span className="font-mono text-slate-800">{selectedTeacher.employee_code}</span>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Edit Faculty Profile</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">
+              Update credentials for <span className="font-semibold text-[#F8FAFC]">{selectedTeacher.full_name}</span> ({selectedTeacher.employee_code})
             </p>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
 
             <form onSubmit={handleUpdateTeacher} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Full Legal Name *</label>
                 <input
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
-                <select
-                  value={editDesignation}
-                  onChange={(e) => setEditDesignation(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                >
-                  <option value="Professor">Professor</option>
-                  <option value="Associate Professor">Associate Professor</option>
-                  <option value="Assistant Professor">Assistant Professor</option>
-                  <option value="Lecturer">Lecturer</option>
-                  <option value="Lab Instructor">Lab Instructor</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Designation</label>
+                  <input
+                    type="text"
+                    value={editDesignation}
+                    onChange={(e) => setEditDesignation(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Qualification</label>
+                  <input
+                    type="text"
+                    value={editQualification}
+                    onChange={(e) => setEditQualification(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Qualification</label>
-                <input
-                  type="text"
-                  value={editQualification}
-                  onChange={(e) => setEditQualification(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Phone Number</label>
                 <input
                   type="tel"
                   value={editPhoneNumber}
                   onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-3 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => {
                     setEditModalOpen(false);
                     setSelectedTeacher(null);
                   }}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -610,26 +598,29 @@ export const AdminTeachers: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Teacher Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteModalOpen && selectedTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Faculty Member?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-800">{selectedTeacher.full_name}</span> ({selectedTeacher.employee_code})?
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Faculty Member?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove <span className="font-semibold text-[#F8FAFC]">{selectedTeacher.full_name}</span> ({selectedTeacher.employee_code})?
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Deletion will be blocked if active timetable slots or lecture sessions are linked to this faculty.
+            <p className="text-[11px] text-[#64748B] mt-1">
+              If lectures have been conducted by this instructor, account will be deactivated instead to safeguard audit logs.
             </p>
 
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setSelectedTeacher(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>

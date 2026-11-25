@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/authentication/AuthContext';
-import { ShieldCheck, User, GraduationCap, Lock, Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
+import { PortalSelectionModal } from './PortalSelectionModal';
 
 const navLinks = [
   { name: 'Home', path: '/', end: true },
@@ -12,11 +13,24 @@ const navLinks = [
   { name: 'Contact', path: '/contact', end: false },
 ];
 
-export const Navbar: React.FC = () => {
+export interface NavbarProps {
+  onOpenPortalModal?: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenPortalModal }) => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [localModalOpen, setLocalModalOpen] = useState(false);
+
+  const handleOpenPortalModal = () => {
+    if (onOpenPortalModal) {
+      onOpenPortalModal();
+    } else {
+      setLocalModalOpen(true);
+      window.dispatchEvent(new CustomEvent('attendx:open-portal-modal'));
+    }
+  };
 
   const getDashboardPath = () => {
     if (!user) return '/login';
@@ -27,35 +41,38 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+      <header className="sticky top-0 z-40 bg-[#080D19]/90 backdrop-blur-md border-b border-[#23334A] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 sm:h-18">
             {/* Logo & Brand */}
             <Link to="/" className="flex items-center space-x-3 group">
               <img
                 src="/assets/attendx-logo.png"
                 alt="AttendX"
-                className="w-10 h-10 object-contain rounded-xl shadow-xs"
+                className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl shadow-xs group-hover:scale-105 transition-transform"
               />
-              <div>
-                <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
-                  Attend<span className="text-blue-600">X</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-tight text-[#F8FAFC]">
+                  Attend<span className="text-[#3B82F6]">X</span>
+                </span>
+                <span className="text-[10px] text-[#A1AEC2] tracking-wider uppercase font-medium hidden sm:inline -mt-1">
+                  Smart Campus
                 </span>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
+            <nav className="hidden md:flex items-center space-x-7 lg:space-x-8">
               {navLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}
                   end={link.end}
                   className={({ isActive }) =>
-                    `text-sm font-medium transition-colors relative py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm ${
+                    `text-sm transition-colors relative py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm ${
                       isActive
-                        ? 'text-blue-600 font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-600 after:rounded-full'
-                        : 'text-slate-600 hover:text-blue-600'
+                        ? 'text-blue-600 font-semibold text-[#3B82F6] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#3B82F6] after:rounded-full'
+                        : 'text-slate-600 text-[#A1AEC2] hover:text-[#F8FAFC]'
                     }`
                   }
                 >
@@ -68,35 +85,30 @@ export const Navbar: React.FC = () => {
             <div className="hidden md:flex items-center space-x-3">
               {isAuthenticated ? (
                 <button
+                  type="button"
                   onClick={() => navigate(getDashboardPath())}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
+                  className="inline-flex items-center px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-md shadow-blue-500/20 transition-all cursor-pointer"
                 >
                   Dashboard <ArrowRight className="w-4 h-4 ml-2" />
                 </button>
               ) : (
-                <>
-                  <button
-                    onClick={() => setLoginModalOpen(true)}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
-                  >
-                    Get Started
-                  </button>
-                  <Link
-                    to="/admin/login"
-                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="Administrative Access"
-                  >
-                    <Lock className="w-4 h-4" />
-                  </Link>
-                </>
+                <button
+                  type="button"
+                  onClick={handleOpenPortalModal}
+                  className="inline-flex items-center px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02] cursor-pointer"
+                >
+                  Login
+                </button>
               )}
             </div>
 
             {/* Mobile menu button */}
-            <div className="flex md:hidden">
+            <div className="flex md:hidden items-center space-x-2">
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                className="p-2 rounded-xl text-[#A1AEC2] hover:text-[#F8FAFC] hover:bg-[#16243A] transition-colors"
+                aria-label="Toggle navigation menu"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -106,7 +118,7 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-6 space-y-1">
+          <div className="md:hidden border-t border-[#23334A] bg-[#0D1525] px-4 pt-3 pb-6 space-y-1 shadow-2xl">
             {navLinks.map((link) => (
               <NavLink
                 key={link.path}
@@ -114,108 +126,42 @@ export const Navbar: React.FC = () => {
                 end={link.end}
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `block px-3 py-2 rounded-lg text-base font-medium transition-colors ${
+                  `block px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive
-                      ? 'text-blue-600 bg-blue-50/80 font-semibold border-l-4 border-blue-600'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-blue-600'
+                      ? 'text-blue-600 font-semibold text-[#3B82F6] bg-blue-500/10 border-l-3 border-[#3B82F6]'
+                      : 'text-slate-600 text-[#A1AEC2] hover:bg-[#16243A] hover:text-[#F8FAFC]'
                   }`
                 }
               >
                 {link.name}
               </NavLink>
             ))}
-            <div className="pt-2">
+            <div className="pt-3 border-t border-[#23334A]/80 flex flex-col space-y-2">
               <button
+                type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  setLoginModalOpen(true);
+                  if (isAuthenticated) {
+                    navigate(getDashboardPath());
+                  } else {
+                    handleOpenPortalModal();
+                  }
                 }}
-                className="w-full text-center py-2.5 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm shadow-sm"
+                className="w-full text-center py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] text-white font-semibold text-xs shadow-md cursor-pointer"
               >
-                {isAuthenticated ? 'Go to Dashboard' : 'Get Started / Sign In'}
+                {isAuthenticated ? 'Go to Dashboard' : 'Login'}
               </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* Get Started Modal */}
-      {loginModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
-            <button
-              onClick={() => setLoginModalOpen(false)}
-              className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">Sign in to AttendX</h3>
-              <p className="text-sm text-slate-500 mt-1">Select your portal to continue</p>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  setLoginModalOpen(false);
-                  navigate('/login?role=student');
-                }}
-                className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all text-left group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      Student Portal
-                    </h4>
-                    <p className="text-xs text-slate-500">Attendance, face verification & reports</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              </button>
-
-              <button
-                onClick={() => {
-                  setLoginModalOpen(false);
-                  navigate('/login?role=teacher');
-                }}
-                className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all text-left group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      Teacher Portal
-                    </h4>
-                    <p className="text-xs text-slate-500">Start sessions, generate QR & mark attendance</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              </button>
-
-              <div className="pt-3 border-t border-slate-100 text-center">
-                <p className="text-xs text-slate-500">
-                  New student?{' '}
-                  <Link
-                    to="/create-account"
-                    onClick={() => setLoginModalOpen(false)}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    Activate your account
-                  </Link>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Standalone Fallback Portal Selection Modal */}
+      {!onOpenPortalModal && (
+        <PortalSelectionModal
+          isOpen={localModalOpen}
+          onClose={() => setLocalModalOpen(false)}
+        />
       )}
     </>
   );

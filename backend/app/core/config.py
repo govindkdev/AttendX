@@ -68,7 +68,13 @@ class Settings(BaseSettings):
     STORAGE_DIR: str = str(BASE_DIR / "storage")
     UPLOAD_DIR: str = str(BASE_DIR / "storage" / "uploads")
     FACE_MODEL_DIR: str = str(BASE_DIR / "storage" / "models")
-    FACE_SIMILARITY_THRESHOLD: float = 0.65  # Cosine similarity threshold
+    INSIGHTFACE_MODEL_NAME: str = "buffalo_l"
+    FACE_SIMILARITY_THRESHOLD: float = 0.48  # ArcFace 512-d cosine similarity threshold
+    FACE_AMBIGUITY_MARGIN: float = 0.08      # Ambiguity margin between top-1 and top-2 candidate
+    PAD_MODEL_PATH: str = str((BACKEND_DIR / "storage" / "models" / "anti_spoof.onnx").resolve())
+    PAD_THRESHOLD: float = 0.65              # MiniFASNet live class confidence threshold
+    FACE_DET_CONFIDENCE: float = 0.65        # RetinaFace detection confidence threshold
+    FACE_MULTI_FRAME_SIMILARITY: float = 0.82 # Minimum cosine similarity between multi-frame captures
 
     # Email & SMS Providers
     EMAIL_PROVIDER: str = "mock"  # mock, smtp
@@ -104,3 +110,4 @@ settings = Settings()
 os.makedirs(settings.STORAGE_DIR, exist_ok=True)
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.FACE_MODEL_DIR, exist_ok=True)
+os.makedirs(Path(settings.PAD_MODEL_PATH).parent, exist_ok=True)

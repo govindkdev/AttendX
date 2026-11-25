@@ -2,8 +2,9 @@ import json
 import secrets
 from pathlib import Path
 import cv2
+import numpy as np
 from datetime import datetime, timezone, timedelta, date, time
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +39,8 @@ from app.models.entities import (
     GeofenceSettings,
     InstituteSettings,
     Subject,
+    Course,
+    Branch,
     AuditLog
 )
 from app.permissions.deps import (
@@ -106,8 +109,12 @@ async def enroll_face_dataset(
         ok, quality, _ = face_service.assess_quality(img)
         if not ok:
             continue
-        ok_emb, vec, _ = face_service.extract_face_embedding(img)
-        if ok_emb and vec:
+        ok_det, faces, _ = face_service.detect_faces(img)
+        if not ok_det or len(faces) != 1:
+            continue
+        face = faces[0]
+        vec = face_service._get_normalized_embedding(face)
+        if vec:
             valid_vectors.append(vec)
             valid_images.append((img, quality))
             quality_scores.append(quality)
@@ -115,15 +122,25 @@ async def enroll_face_dataset(
     if not valid_vectors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not generate valid face template from captured samples. Please ensure proper lighting, clear focus, and centered camera framing."
+            detail="Could not generate valid face template from captured samples. Please ensure proper lighting, clear focus, centered camera framing, and exactly one face visible."
         )
 
-    # Average vectors and normalize to create master biometric template
-    mean_vec = [float(sum(v[i] for v in valid_vectors) / len(valid_vectors)) for i in range(128)]
-    # L2 normalize
-    norm = sum(x**2 for x in mean_vec) ** 0.5
-    if norm > 0:
-        mean_vec = [x / norm for x in mean_vec]
+    # Average vectors and normalize to create master biometric centroid
+    arr = np.array(valid_vectors, dtype=np.float32)
+    mean_vec = np.mean(arr, axis=0)
+    norm = np.linalg.norm(mean_vec)
+    if norm > 1e-6:
+        mean_vec = mean_vec / norm
+    centroid_vec = mean_vec.tolist()
+
+    # Select representative exemplar vectors (up to 5 samples)
+    exemplar_vecs = [v if isinstance(v, list) else v.tolist() for v in valid_vectors[:5]]
+
+    template_payload = {
+        "version": "insightface-buffalo_l-v1",
+        "centroid": centroid_vec,
+        "samples": exemplar_vecs
+    }
 
     avg_quality = float(sum(quality_scores) / len(quality_scores))
 
@@ -178,8 +195,8 @@ async def enroll_face_dataset(
     template = FaceTemplate(
         face_enrollment_id=enrollment.id,
         student_id=student.id,
-        embedding_vector=json.dumps(mean_vec),
-        algorithm_version="opencv-sf-v1",
+        embedding_vector=json.dumps(template_payload),
+        algorithm_version="insightface-buffalo_l-v1",
         is_active=True,
         created_at=now
     )
@@ -220,6 +237,9 @@ async def reset_face_enrollment(
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found.")
 
+    await db.refresh(student, ["user"])
+    stu_code = student.user.user_code if student.user else f"ID-{student.id}"
+
     stmt_enr = select(FaceEnrollment).where(FaceEnrollment.student_id == student.id)
     enrollment = (await db.execute(stmt_enr)).scalars().first()
     if enrollment:
@@ -237,14 +257,14 @@ async def reset_face_enrollment(
         action="FACE_ENROLLMENT_RESET",
         resource_type="STUDENT",
         resource_id=str(student.id),
-        details=f"Admin reset face biometric enrollment for student {student.student_id}.",
+        details=f"Admin reset face biometric enrollment for student {stu_code}.",
         ip_address="127.0.0.1",
         timestamp=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()
 
-    return {"message": f"Biometric face dataset successfully reset for {student.student_id}."}
+    return {"message": f"Biometric face dataset successfully reset for {stu_code}."}
 
 # --- Lecture Sessions ---
 
@@ -390,11 +410,14 @@ async def get_active_sessions(
 @router.post("/verify-face", response_model=AttendanceRecordResponse)
 async def submit_face_attendance(
     req: FaceAttendanceSubmit,
+    request: Request,
     current_user: User = Depends(require_student),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Validates facial biometric frame, session status, GPS perimeter, and records attendance transactionally.
+    Enforces fail-closed Presentation Attack Detection (PAD) and 1:N Global Identity Verification
+    (authenticated_student_id == recognized_student_id) to eliminate impersonation vulnerabilities.
     """
     # 1. Fetch student profile
     stmt_prof = select(StudentProfile).options(
@@ -405,6 +428,8 @@ async def submit_face_attendance(
     student = (await db.execute(stmt_prof)).scalars().first()
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found.")
+
+    student_code = student.user.user_code if (student and student.user) else f"ID-{student.id}"
 
     # 2. Check active face enrollment and template
     stmt_tmpl = select(FaceTemplate).where(
@@ -468,16 +493,174 @@ async def submit_face_attendance(
         if not in_fence:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
-    # 6. Biometric comparison
-    is_match, conf, match_msg = face_service.verify_face(
-        captured_frame=req.face_image,
-        stored_template_json=template.embedding_vector
+    # 6. Biometric Frame Processing, Liveness (PAD), and Embedding Extraction
+    now = datetime.now(timezone.utc)
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+
+    live_vec = None
+    if req.frames and len(req.frames) > 1:
+        # Multi-frame verification flow
+        decoded_frames = []
+        for f in req.frames:
+            dec = face_service.decode_image(f)
+            if dec is not None:
+                decoded_frames.append(dec)
+        if not decoded_frames:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not decode provided camera frames."
+            )
+        ok_mf, live_vec, mf_msg = face_service.verify_multi_frame_consistency(decoded_frames)
+        if not ok_mf:
+            if "presentation attack" in mf_msg.lower() or "inconsistency" in mf_msg.lower():
+                audit_spoof = AuditLog(
+                    actor_id=current_user.id,
+                    actor_role=current_user.role.value,
+                    action="SECURITY_ALERT_SPOOF_ATTEMPT",
+                    resource_type="STUDENT",
+                    resource_id=str(student.id),
+                    details=f"Multi-frame presentation attack detected for student {student_code}: {mf_msg}",
+                    ip_address=client_ip,
+                    timestamp=now
+                )
+                db.add(audit_spoof)
+                await db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Biometric presentation attack detected: {mf_msg}"
+                )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=mf_msg)
+    else:
+        # Single frame verification flow
+        img = face_service.decode_image(req.face_image)
+        if img is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid face image frame. Could not decode."
+            )
+
+        # 6a. Quality Check
+        ok_q, q_score, q_msg = face_service.assess_quality(img)
+        if not ok_q:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Face capture quality check failed: {q_msg}"
+            )
+
+        # 6b. Detection Check — exactly one face
+        ok_det, faces, det_msg = face_service.detect_faces(img)
+        if not ok_det:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=det_msg
+            )
+
+        face = faces[0]
+        bbox = face.bbox.astype(int).tolist()
+
+        # 6c. Presentation Attack Detection (Anti-Spoofing PAD)
+        is_live, pad_score, pad_msg = face_service.check_liveness_pad(img, bbox=bbox)
+        if not is_live:
+            if "fail-closed" in pad_msg.lower() or "unavailable" in pad_msg.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Biometric attendance rejected: Presentation Attack Detection (PAD) model is unavailable. System is running in fail-closed security mode."
+                )
+            audit_spoof = AuditLog(
+                actor_id=current_user.id,
+                actor_role=current_user.role.value,
+                action="SECURITY_ALERT_SPOOF_ATTEMPT",
+                resource_type="STUDENT",
+                resource_id=str(student.id),
+                details=f"Presentation attack detected ({pad_msg}) for student {student_code}. Attendance rejected.",
+                ip_address=client_ip,
+                timestamp=now
+            )
+            db.add(audit_spoof)
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Biometric presentation attack detected: {pad_msg}"
+            )
+
+        # 6d. Extract normalized ArcFace 512-d embedding
+        live_vec = face_service._get_normalized_embedding(face)
+        if live_vec is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to extract facial biometric features from frame."
+            )
+
+    # 6e. Global 1:N Biometric Matching across all enrolled student templates
+    stmt_all_templates = select(FaceTemplate).where(FaceTemplate.is_active == True)
+    all_active_templates = (await db.execute(stmt_all_templates)).scalars().all()
+
+    gallery: Dict[int, Any] = {}
+    for t in all_active_templates:
+        try:
+            gallery[t.student_id] = json.loads(t.embedding_vector)
+        except Exception:
+            continue
+
+    rec_student_id, top_score, second_score, is_ambiguous, id_msg = face_service.identify_1_to_n(
+        live_embedding=live_vec,
+        gallery=gallery
     )
-    if not is_match:
+
+    # Check 1: Unknown identity
+    if rec_student_id is None:
+        audit_unknown = AuditLog(
+            actor_id=current_user.id,
+            actor_role=current_user.role.value,
+            action="SECURITY_ALERT_UNRECOGNIZED_FACE",
+            resource_type="STUDENT",
+            resource_id=str(student.id),
+            details=f"Unrecognized face presented by account {student_code}. Top similarity {top_score:.3f} below threshold {settings.FACE_SIMILARITY_THRESHOLD}.",
+            ip_address=client_ip,
+            timestamp=now
+        )
+        db.add(audit_unknown)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Biometric recognition failed: Unknown individual. Presented face does not match any enrolled student template."
+        )
+
+    # Check 2: Ambiguous identity
+    if is_ambiguous:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Face verification failed: {match_msg}"
+            detail="Ambiguous biometric match: unable to distinguish between enrolled students with required confidence margin. Please adjust lighting and retry."
         )
+
+    # Check 3: CORE SECURITY RULE — Authenticated Student == Recognized Student
+    if rec_student_id != student.id:
+        rec_student = await db.get(StudentProfile, rec_student_id)
+        if rec_student:
+            await db.refresh(rec_student, ["user"])
+            rec_code = rec_student.user.user_code if rec_student.user else f"ID-{rec_student_id}"
+        else:
+            rec_code = f"ID-{rec_student_id}"
+
+        audit_impersonation = AuditLog(
+            actor_id=current_user.id,
+            actor_role=current_user.role.value,
+            action="SECURITY_ALERT_IMPERSONATION",
+            resource_type="STUDENT",
+            resource_id=str(student.id),
+            details=f"CRITICAL BIOMETRIC IMPERSONATION ATTEMPT: Authenticated student {student_code} (ID: {student.id}) presented face matching different enrolled student {rec_code} (ID: {rec_student_id}) with confidence {top_score:.3f}. Attendance rejected.",
+            ip_address=client_ip,
+            timestamp=now
+        )
+        db.add(audit_impersonation)
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Biometric identity mismatch: Presented face does not match authenticated student account ({student_code}). Impersonation security alert logged."
+        )
+
+    conf = top_score
 
     # 7. Determine status (Present vs Late)
     now = datetime.now(timezone.utc)
@@ -622,6 +805,8 @@ async def verify_qr_attendance(
     student = (await db.execute(stmt_prof)).scalars().first()
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found.")
+
+    student_code = student.user.user_code if (student and student.user) else f"ID-{student.id}"
 
     # 3b. Verify student cohort enrollment for this subject (Bug 6)
     subject = await db.get(Subject, session.subject_id)

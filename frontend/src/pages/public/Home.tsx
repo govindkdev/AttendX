@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useOutletContext } from 'react-router-dom';
 import {
   ShieldCheck,
   Camera,
@@ -10,219 +10,544 @@ import {
   Bell,
   Lock,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  Layers,
+  History,
+  Activity,
+  UserCheck,
+  Check
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/common/ScrollReveal';
+import { FeatureCard } from '@/components/ui/FeatureCard';
+import type { PublicOutletContext } from '@/layouts/PublicLayout';
+
+const ROTATING_HIGHLIGHTS = [
+  'AI Face Biometrics',
+  'Dynamic Rotating QR Tokens',
+  'Haversine GPS Geofencing',
+  'Real-Time Campus Analytics',
+];
 
 export const Home: React.FC = () => {
+  const outletCtx = useOutletContext<PublicOutletContext | null>();
+  const [activeHighlightIndex, setActiveHighlightIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveHighlightIndex((prev) => (prev + 1) % ROTATING_HIGHLIGHTS.length);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleOpenPortal = () => {
+    if (outletCtx && typeof outletCtx.onOpenPortalModal === 'function') {
+      outletCtx.onOpenPortalModal();
+    } else {
+      window.dispatchEvent(new CustomEvent('attendx:open-portal-modal'));
+    }
+  };
+
   return (
-    <div className="space-y-24 pb-20 overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 md:pt-20 lg:pt-28 bg-gradient-to-b from-blue-50/60 via-slate-50 to-white">
+    <div className="space-y-24 sm:space-y-32 pb-24 overflow-x-hidden text-[#F8FAFC]">
+      {/* =========================================================================
+          HERO SECTION
+          ========================================================================= */}
+      <section className="relative pt-12 md:pt-20 lg:pt-28 bg-radial-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto space-y-6">
-            <div className="hero-animate-badge inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-100/80 border border-blue-200 text-blue-800 text-xs font-semibold shadow-xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-              <span>Next-Generation Institute Management Platform</span>
+          <div className="text-center max-w-4xl mx-auto space-y-6">
+            {/* Badge */}
+            <div className="hero-animate-badge inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#16243A] border border-[#23334A] text-[#22D3EE] text-xs font-semibold shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#3B82F6]" />
+              <span>AI-Powered Campus Attendance & Identity Platform</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
+            {/* Headline */}
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#F8FAFC] leading-[1.1]">
               <span className="hero-word-1 mr-2 sm:mr-3">Smart Attendance.</span>
-              <span className="hero-word-2 mr-2 sm:mr-3">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600">
-                  Verified Identity.
-                </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#22D3EE]">
+                Smarter Campus.
               </span>
-              <span className="hero-word-3">Trusted Insights.</span>
             </h1>
 
-            <p className="hero-animate-desc text-lg text-slate-600 leading-relaxed font-normal">
-              Eliminate proxy attendance, paper registers, and manual errors. AttendX combines computer-vision face verification, cryptographic signed QR tokens, and GPS geofencing into a unified, privacy-first platform.
+            {/* Supporting Headline */}
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-[#A1AEC2]">
+              <span className="hero-word-2 mr-2 text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6]">
+                Verified Identity.
+              </span>
+              <span className="hero-word-3 text-[#F8FAFC]">Trusted Insights.</span>
             </p>
 
+            {/* Rotating Technology Highlight */}
+            <div className="inline-flex items-center space-x-2 text-xs font-mono text-[#A1AEC2] bg-[#0D1525]/80 px-3.5 py-1.5 rounded-full border border-[#23334A] shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
+              <span className="text-[#64748B]">active.module:</span>
+              <span className="text-[#22D3EE] font-semibold transition-all duration-300">
+                {ROTATING_HIGHLIGHTS[activeHighlightIndex]}
+              </span>
+            </div>
+
+            {/* Description */}
+            <p className="hero-animate-desc text-base sm:text-lg text-[#A1AEC2] leading-relaxed max-w-2xl mx-auto font-normal">
+              AttendX brings intelligent face verification, secure QR attendance and campus location validation together to simplify attendance management.
+            </p>
+
+            {/* CTAs */}
             <div className="hero-animate-cta flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <Link
-                to="/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 hover:scale-[1.02] transition-all"
+              <button
+                type="button"
+                onClick={handleOpenPortal}
+                className="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 shadow-lg shadow-blue-600/25 transition-all hover:scale-[1.02] cursor-pointer"
               >
                 Get Started <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+              </button>
               <Link
                 to="/features"
-                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-xs hover:border-slate-400 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 text-sm font-semibold rounded-xl text-[#F8FAFC] bg-[#111D30] hover:bg-[#16243A] border border-[#23334A] transition-all"
               >
                 Explore Features
               </Link>
             </div>
 
-            {/* Micro Trust Indicators */}
-            <div className="hero-animate-indicators pt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-medium text-slate-500">
-              <span className="flex items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mr-1.5" /> 128-d Biometric Verification</span>
-              <span className="flex items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mr-1.5" /> HMAC-SHA256 Signed QR</span>
-              <span className="flex items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mr-1.5" /> Haversine GPS Geofencing</span>
-              <span className="flex items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mr-1.5" /> Zero Demo Data Guarantee</span>
+            {/* Indicators */}
+            <div className="hero-animate-indicators pt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-8 text-xs font-medium text-[#A1AEC2]">
+              <span className="flex items-center">
+                <CheckCircle2 className="w-4 h-4 text-[#22C55E] mr-1.5 shrink-0" /> Real-Time Face Verification
+              </span>
+              <span className="flex items-center">
+                <CheckCircle2 className="w-4 h-4 text-[#22C55E] mr-1.5 shrink-0" /> Dynamic Rotating QR Tokens
+              </span>
+              <span className="flex items-center">
+                <CheckCircle2 className="w-4 h-4 text-[#22C55E] mr-1.5 shrink-0" /> Haversine GPS Geofencing
+              </span>
+              <span className="flex items-center">
+                <CheckCircle2 className="w-4 h-4 text-[#22C55E] mr-1.5 shrink-0" /> Role-Based Access Governance
+              </span>
+            </div>
+
+            {/* Product Console Visual Preview */}
+            <div className="pt-10 sm:pt-14">
+              <div className="relative mx-auto max-w-5xl rounded-2xl border border-[#23334A] bg-[#0D1525] p-2 sm:p-4 shadow-2xl shadow-blue-950/40">
+                {/* Console Window Top bar */}
+                <div className="flex items-center justify-between pb-3 px-3 border-b border-[#23334A]/80 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-3 h-3 rounded-full bg-[#EF4444]/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-[#F59E0B]/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-[#22C55E]/80 inline-block" />
+                    <span className="ml-2 font-mono text-[11px] text-[#64748B]">attendx.campus.internal/live-session</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-[11px] text-[#A1AEC2]">
+                    <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
+                    <span>SESSION IN PROGRESS</span>
+                  </div>
+                </div>
+
+                {/* Console Interior */}
+                <div className="p-4 sm:p-6 bg-[#080D19]/60 rounded-xl mt-2 grid grid-cols-1 lg:grid-cols-3 gap-4 text-left">
+                  {/* Session Overview */}
+                  <div className="bg-[#111D30] border border-[#23334A] rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase text-[#3B82F6]">Current Lecture</span>
+                        <h4 className="text-sm font-bold text-[#F8FAFC] mt-0.5">CS-402 Artificial Intelligence</h4>
+                        <p className="text-xs text-[#A1AEC2]">Room 304, Academic Block A</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-[#22D3EE] border border-cyan-500/30">
+                        ACTIVE
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#23334A] grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block">Recorded</span>
+                        <span className="font-stats font-bold text-emerald-400 text-lg">42</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block">Enrolled Total</span>
+                        <span className="font-stats font-bold text-[#F8FAFC] text-lg">48</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Vectors */}
+                  <div className="bg-[#111D30] border border-[#23334A] rounded-xl p-4 space-y-2.5">
+                    <span className="text-[11px] font-semibold uppercase text-[#A1AEC2] block">Multi-Factor Vectors</span>
+                    <div className="flex items-center justify-between text-xs py-1 border-b border-[#23334A]/60">
+                      <span className="flex items-center text-[#F8FAFC]">
+                        <Camera className="w-3.5 h-3.5 text-[#3B82F6] mr-2" /> Facial Biometrics
+                      </span>
+                      <span className="text-emerald-400 font-semibold text-[11px]">Enforced</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs py-1 border-b border-[#23334A]/60">
+                      <span className="flex items-center text-[#F8FAFC]">
+                        <QrCode className="w-3.5 h-3.5 text-[#8B5CF6] mr-2" /> Dynamic QR
+                      </span>
+                      <span className="text-emerald-400 font-semibold text-[11px]">Rotating 15s</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs py-1">
+                      <span className="flex items-center text-[#F8FAFC]">
+                        <MapPin className="w-3.5 h-3.5 text-[#22D3EE] mr-2" /> GPS Geofence
+                      </span>
+                      <span className="text-emerald-400 font-semibold text-[11px]">Within 150m</span>
+                    </div>
+                  </div>
+
+                  {/* Real-Time Live Feed */}
+                  <div className="bg-[#111D30] border border-[#23334A] rounded-xl p-4 space-y-2">
+                    <span className="text-[11px] font-semibold uppercase text-[#A1AEC2] block">Recent Verifications</span>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[#16243A]">
+                        <span className="font-medium text-[#F8FAFC]">Aarav Sharma</span>
+                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Face Verified</span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[#16243A]">
+                        <span className="font-medium text-[#F8FAFC]">Priya Patel</span>
+                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">QR + GPS</span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-[#16243A]">
+                        <span className="font-medium text-[#F8FAFC]">Rohan Gupta</span>
+                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Face Verified</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Triple Verification Core Pillars */}
+      {/* =========================================================================
+          FEATURES SECTION (8 PLANNED CORE CAPABILITIES)
+          ========================================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <h2 className="text-xs font-bold text-blue-600 tracking-wider uppercase">Verification Engine</h2>
-          <p className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Triple-Tier Attendance Integrity
-          </p>
-          <p className="text-slate-600 text-sm">
-            Multiple authentic verification vectors working in synergy to ensure students are genuinely present on campus in the classroom.
+        <ScrollReveal className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <span className="text-xs font-bold text-[#3B82F6] tracking-wider uppercase">
+            Platform Capabilities
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#F8FAFC]">
+            Engineered for Modern Campus Administration
+          </h2>
+          <p className="text-sm sm:text-base text-[#A1AEC2] leading-relaxed">
+            AttendX brings together cutting-edge computer vision, location verification, and administrative governance to streamline institutional attendance.
           </p>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Card 1: Face Verification */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* 1. AI Face Recognition */}
           <ScrollReveal delay={0}>
-            <div className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow relative overflow-hidden group h-full">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Camera className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Facial Biometrics</h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                Real-time browser camera frame analysis. Extracts normalized 128-dimensional biometric embeddings and verifies cosine similarity against enrolled templates.
-              </p>
-              <ul className="text-xs space-y-2 text-slate-500 font-medium">
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mr-2 shrink-0" /> Blur & lighting exposure check</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mr-2 shrink-0" /> Zero raw image storage for privacy</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mr-2 shrink-0" /> Strict confidence thresholding</li>
-              </ul>
-            </div>
+            <FeatureCard
+              icon={Camera}
+              badge="Biometrics"
+              title="AI Face Recognition"
+              description="Real-time browser-based face verification utilizing computer vision to match facial landmark embeddings against enrolled templates."
+              points={[
+                'Instant webcam/mobile capture',
+                'Anti-spoofing pose validation',
+                'Normalized embedding storage',
+              ]}
+            />
           </ScrollReveal>
 
-          {/* Card 2: QR Attendance */}
-          <ScrollReveal delay={150}>
-            <div className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow relative overflow-hidden group h-full">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <QrCode className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Signed Expiring QR</h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                Teachers project a dynamically generated QR token with an embedded HMAC-SHA256 digital signature, nonces, and automatic expiration.
-              </p>
-              <ul className="text-xs space-y-2 text-slate-500 font-medium">
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 mr-2 shrink-0" /> 30-minute configurable validity</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 mr-2 shrink-0" /> Anti-replay and screenshot protection</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 mr-2 shrink-0" /> Bound to specific lecture sessions</li>
-              </ul>
-            </div>
+          {/* 2. QR-Based Attendance */}
+          <ScrollReveal delay={100}>
+            <FeatureCard
+              icon={QrCode}
+              badge="Cryptographic"
+              title="QR-Based Attendance"
+              description="Dynamically refreshing, time-limited QR codes projected by faculty and securely scanned by students in the lecture hall."
+              points={[
+                'Auto-refreshes every 15-30s',
+                'Prevents screenshot sharing',
+                'One-scan per device binding',
+              ]}
+            />
           </ScrollReveal>
 
-          {/* Card 3: GPS Geofencing */}
+          {/* 3. GPS Geofencing */}
+          <ScrollReveal delay={200}>
+            <FeatureCard
+              icon={MapPin}
+              badge="Haversine"
+              title="GPS Geofencing"
+              description="Validates student physical presence within institutional classroom and campus boundaries using precision geolocation calculations."
+              points={[
+                'Configurable campus perimeter',
+                'Location spoofing deterrence',
+                'Zero continuous tracking',
+              ]}
+            />
+          </ScrollReveal>
+
+          {/* 4. Attendance Analytics */}
           <ScrollReveal delay={300}>
-            <div className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow relative overflow-hidden group h-full">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <MapPin className="w-6 h-6" />
+            <FeatureCard
+              icon={BarChart3}
+              badge="Insights"
+              title="Attendance Analytics"
+              description="Institutional dashboard telemetry visualizing subject-wise trends, batch performance, and early warnings for attendance shortages."
+              points={[
+                '75% eligibility cutoff tracking',
+                'Departmental comparisons',
+                'Exportable XLSX and PDF reports',
+              ]}
+            />
+          </ScrollReveal>
+
+          {/* 5. Parent Notifications */}
+          <ScrollReveal delay={400}>
+            <FeatureCard
+              icon={Bell}
+              badge="Alerts"
+              title="Parent Notifications"
+              description="Automated alerts and notifications keeping guardians informed regarding attendance shortages before examination cutoffs."
+              points={[
+                'Automated shortage triggers',
+                'Institutional communication log',
+                'Customizable alert thresholds',
+              ]}
+            />
+          </ScrollReveal>
+
+          {/* 6. AttendX AI Assistant */}
+          <ScrollReveal delay={500}>
+            <FeatureCard
+              icon={Bot}
+              badge="AI Copilot"
+              title="AttendX AI Assistant"
+              description="Context-aware campus assistant answering attendance questions, explaining percentages, and summarizing institutional trends."
+              points={[
+                'Role-specific intelligence',
+                'Shortage queries & timetable check',
+                'Faculty & admin insights',
+              ]}
+            />
+          </ScrollReveal>
+
+          {/* 7. Secure Authentication */}
+          <ScrollReveal delay={600}>
+            <FeatureCard
+              icon={Lock}
+              badge="Access Control"
+              title="Secure Authentication"
+              description="Strict role-based access management with separated administrative, faculty, and student portals preventing unauthorized elevation."
+              points={[
+                'Isolated role login portals',
+                'Two-step account activation',
+                'Tokenized session management',
+              ]}
+            />
+          </ScrollReveal>
+
+          {/* 8. Attendance Audit Logs */}
+          <ScrollReveal delay={700}>
+            <FeatureCard
+              icon={ShieldCheck}
+              badge="Compliance"
+              title="Attendance Audit Logs"
+              description="Comprehensive historical logging of every attendance event, verification vector, manual override, and institutional modification."
+              points={[
+                'Immutable timestamp tracking',
+                'Faculty correction tracking',
+                'Academic audit readiness',
+              ]}
+            />
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          HOW IT WORKS (5-STEP WORKFLOW)
+          ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <span className="text-xs font-bold text-[#3B82F6] tracking-wider uppercase">
+            System Workflow
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#F8FAFC]">
+            How AttendX Works
+          </h2>
+          <p className="text-sm sm:text-base text-[#A1AEC2] leading-relaxed">
+            A seamless, frictionless five-step operational workflow from lecture initiation to administrative review.
+          </p>
+        </ScrollReveal>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+          {/* Step 1 */}
+          <ScrollReveal delay={0}>
+            <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-6 h-full flex flex-col justify-between hover:border-[#3B82F6]/40 transition-colors">
+              <div>
+                <span className="w-8 h-8 rounded-xl bg-blue-500/10 text-[#3B82F6] border border-blue-500/20 flex items-center justify-center text-xs font-bold font-stats mb-4">
+                  01
+                </span>
+                <h3 className="text-base font-bold text-[#F8FAFC] mb-2">Faculty Starts Session</h3>
+                <p className="text-xs text-[#A1AEC2] leading-relaxed">
+                  Instructor selects subject and initiates a live attendance session from their faculty portal.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">GPS Geofencing</h3>
-              <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                Mathematical Haversine formula calculation ensures student coordinates fall strictly within the authorized campus perimeter.
-              </p>
-              <ul className="text-xs space-y-2 text-slate-500 font-medium">
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-2 shrink-0" /> Configurable center & radius (200m)</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-2 shrink-0" /> Hardware accuracy threshold check</li>
-                <li className="flex items-center"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-2 shrink-0" /> Audited reject reasons for anomalies</li>
-              </ul>
+            </div>
+          </ScrollReveal>
+
+          {/* Step 2 */}
+          <ScrollReveal delay={100}>
+            <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-6 h-full flex flex-col justify-between hover:border-[#3B82F6]/40 transition-colors">
+              <div>
+                <span className="w-8 h-8 rounded-xl bg-cyan-500/10 text-[#22D3EE] border border-cyan-500/20 flex items-center justify-center text-xs font-bold font-stats mb-4">
+                  02
+                </span>
+                <h3 className="text-base font-bold text-[#F8FAFC] mb-2">Student Verifies Identity</h3>
+                <p className="text-xs text-[#A1AEC2] leading-relaxed">
+                  Student uses camera for AI face recognition or scans the dynamic classroom QR code.
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Step 3 */}
+          <ScrollReveal delay={200}>
+            <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-6 h-full flex flex-col justify-between hover:border-[#3B82F6]/40 transition-colors">
+              <div>
+                <span className="w-8 h-8 rounded-xl bg-purple-500/10 text-[#8B5CF6] border border-purple-500/20 flex items-center justify-center text-xs font-bold font-stats mb-4">
+                  03
+                </span>
+                <h3 className="text-base font-bold text-[#F8FAFC] mb-2">System Checks Conditions</h3>
+                <p className="text-xs text-[#A1AEC2] leading-relaxed">
+                  The system validates biometric confidence, QR validity window, and campus GPS geofence.
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Step 4 */}
+          <ScrollReveal delay={300}>
+            <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-6 h-full flex flex-col justify-between hover:border-[#3B82F6]/40 transition-colors">
+              <div>
+                <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-[#22C55E] border border-emerald-500/20 flex items-center justify-center text-xs font-bold font-stats mb-4">
+                  04
+                </span>
+                <h3 className="text-base font-bold text-[#F8FAFC] mb-2">Attendance Recorded</h3>
+                <p className="text-xs text-[#A1AEC2] leading-relaxed">
+                  Status is instantly logged in the database with verification method and immutable timestamp.
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Step 5 */}
+          <ScrollReveal delay={400}>
+            <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-6 h-full flex flex-col justify-between hover:border-[#3B82F6]/40 transition-colors">
+              <div>
+                <span className="w-8 h-8 rounded-xl bg-amber-500/10 text-[#F59E0B] border border-amber-500/20 flex items-center justify-center text-xs font-bold font-stats mb-4">
+                  05
+                </span>
+                <h3 className="text-base font-bold text-[#F8FAFC] mb-2">Review & Reports</h3>
+                <p className="text-xs text-[#A1AEC2] leading-relaxed">
+                  Faculty and administrators review verified records, generate reports, and trigger alerts.
+                </p>
+              </div>
             </div>
           </ScrollReveal>
         </div>
       </section>
 
-      {/* Feature Highlights Grid */}
-      <section className="bg-slate-900 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ScrollReveal className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <h2 className="text-xs font-bold text-blue-400 tracking-wider uppercase">Capabilities</h2>
-            <p className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Complete Institute Management Suite
+      {/* =========================================================================
+          SECURITY SECTION
+          ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ScrollReveal className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <span className="text-xs font-bold text-[#3B82F6] tracking-wider uppercase">
+            Security & Governance
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#F8FAFC]">
+            Academic Integrity & Data Protection
+          </h2>
+          <p className="text-sm sm:text-base text-[#A1AEC2] leading-relaxed">
+            AttendX is architected with disciplined access controls, verifiable attendance records, and privacy-conscious design.
+          </p>
+        </ScrollReveal>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-7 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-[#3B82F6] border border-blue-500/20 flex items-center justify-center">
+              <Layers className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Role-Based Access</h3>
+            <p className="text-xs sm:text-sm text-[#A1AEC2] leading-relaxed">
+              Separated authentication portals and permission guardrails ensure students, teachers, and administrators access only their designated features.
             </p>
-          </ScrollReveal>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <ScrollReveal delay={0}>
-              <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 h-full">
-                <Bot className="w-8 h-8 text-blue-400 mb-4" />
-                <h4 className="text-lg font-bold mb-2">AttendX AI Assistant</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Natural-language attendance queries backed strictly by database evidence. Never fabricates numbers or executes unverified SQL.
-                </p>
-              </div>
-            </ScrollReveal>
+          <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-7 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-[#22D3EE] border border-cyan-500/20 flex items-center justify-center">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Secure Authentication</h3>
+            <p className="text-xs sm:text-sm text-[#A1AEC2] leading-relaxed">
+              Institutional identity verification with hashed credential storage, dedicated activation flows, and secure session management.
+            </p>
+          </div>
 
-            <ScrollReveal delay={100}>
-              <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 h-full">
-                <BarChart3 className="w-8 h-8 text-emerald-400 mb-4" />
-                <h4 className="text-lg font-bold mb-2">Live Analytics</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Real database aggregates for students, faculty, and administrators. Track subjects below 75%, attendance trends, and daily metrics.
-                </p>
-              </div>
-            </ScrollReveal>
+          <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-7 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-[#8B5CF6] border border-purple-500/20 flex items-center justify-center">
+              <Activity className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Attendance Verification</h3>
+            <p className="text-xs sm:text-sm text-[#A1AEC2] leading-relaxed">
+              Multi-factor validation checks ensure that every recorded attendance record corresponds to an authentic session and verified identity.
+            </p>
+          </div>
 
-            <ScrollReveal delay={200}>
-              <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 h-full">
-                <Bell className="w-8 h-8 text-amber-400 mb-4" />
-                <h4 className="text-lg font-bold mb-2">Parent Alerts</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Automated absence dispatches at lecture completion and daily 5:00 PM cutoff to verified parent contacts.
-                </p>
-              </div>
-            </ScrollReveal>
+          <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-7 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-[#22C55E] border border-emerald-500/20 flex items-center justify-center">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Protected Student Information</h3>
+            <p className="text-xs sm:text-sm text-[#A1AEC2] leading-relaxed">
+              Student details and attendance records are shielded from unauthorized external exposure, maintaining institutional student privacy.
+            </p>
+          </div>
 
-            <ScrollReveal delay={300}>
-              <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/60 h-full">
-                <Lock className="w-8 h-8 text-rose-400 mb-4" />
-                <h4 className="text-lg font-bold mb-2">Immutable Audit Logs</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Every login, status change, manual correction, and configuration update is cryptographically logged with IP and actor role.
-                </p>
-              </div>
-            </ScrollReveal>
+          <div className="bg-[#111D30] border border-[#23334A] rounded-2xl p-7 space-y-3 md:col-span-2 lg:col-span-2">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-[#F59E0B] border border-amber-500/20 flex items-center justify-center">
+              <History className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Attendance Correction History</h3>
+            <p className="text-xs sm:text-sm text-[#A1AEC2] leading-relaxed">
+              Any manual attendance adjustment or correction by authorized faculty is transparently flagged with reasons and audit timestamps to maintain complete academic accountability.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Institutional FAQ */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center mb-12 space-y-2">
-          <h2 className="text-xs font-bold text-blue-600 tracking-wider uppercase">Answers</h2>
-          <h3 className="text-3xl font-bold text-slate-900">Frequently Asked Questions</h3>
-        </ScrollReveal>
-
-        <div className="space-y-4">
-          <ScrollReveal delay={0}>
-            <div className="p-6 rounded-2xl bg-white border border-slate-200">
-              <h4 className="font-bold text-slate-900 mb-2">How does AttendX protect biometric privacy?</h4>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                AttendX does not store unencrypted raw photos of students. During enrollment, facial frames are converted to normalized 128-dimensional mathematical feature vectors. Biometric templates cannot be reverse-engineered into facial photographs.
-              </p>
+      {/* =========================================================================
+          CALL TO ACTION SECTION
+          ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-[#111D30] border border-[#23334A] rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden">
+          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#F8FAFC]">
+              Ready to Upgrade Your Campus Attendance?
+            </h2>
+            <p className="text-sm sm:text-base text-[#A1AEC2]">
+              Choose your institutional portal to get started with AttendX intelligent attendance management.
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={handleOpenPortal}
+                className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 shadow-lg shadow-blue-600/25 transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                Access Portals <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
+              <Link
+                to="/how-it-works"
+                className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-sm font-semibold rounded-xl text-[#F8FAFC] bg-[#16243A] hover:bg-[#1D304D] border border-[#23334A] transition-colors"
+              >
+                View Workflow
+              </Link>
             </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={120}>
-            <div className="p-6 rounded-2xl bg-white border border-slate-200">
-              <h4 className="font-bold text-slate-900 mb-2">What is the No-Demo-Data policy?</h4>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                AttendX never inserts fictional students, fake attendance, or fabricated charts. All metrics, attendance percentages, and analytics in dashboards originate exclusively from actual database transactions initiated by authorized users.
-              </p>
-            </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={240}>
-            <div className="p-6 rounded-2xl bg-white border border-slate-200">
-              <h4 className="font-bold text-slate-900 mb-2">Can a teacher manually correct attendance?</h4>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Yes. When exceptional situations occur, authorized teachers can correct a record. However, the system enforces a mandatory justification reason and creates an immutable audit correction record preserving the original verification method.
-              </p>
-            </div>
-          </ScrollReveal>
+          </div>
+          <div className="absolute inset-0 bg-radial-card opacity-50 pointer-events-none" />
         </div>
       </section>
     </div>

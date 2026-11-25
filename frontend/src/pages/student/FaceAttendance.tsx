@@ -9,9 +9,9 @@ import {
   RefreshCw,
   MapPin,
   Clock,
-  UserCheck,
   ShieldCheck,
-  Lock,
+  Video,
+  VideoOff
 } from 'lucide-react';
 
 export const FaceAttendance: React.FC = () => {
@@ -32,12 +32,14 @@ export const FaceAttendance: React.FC = () => {
 
   useEffect(() => {
     // Load active sessions
-    api.getActiveSessions().then((sessions) => {
-      setActiveSessions(sessions);
-      if (sessions.length > 0) {
-        setSelectedSessionId(sessions[0].session_id);
-      }
-    });
+    api.getActiveSessions()
+      .then((sessions) => {
+        setActiveSessions(sessions || []);
+        if (sessions && sessions.length > 0) {
+          setSelectedSessionId(sessions[0].session_id);
+        }
+      })
+      .catch(() => setActiveSessions([]));
 
     // Request GPS
     if (navigator.geolocation) {
@@ -72,7 +74,7 @@ export const FaceAttendance: React.FC = () => {
         videoRef.current.srcObject = mediaStream;
       }
       setCameraActive(true);
-    } catch (err: any) {
+    } catch {
       setCameraError('Camera access denied or unavailable. Please enable browser camera permissions.');
     }
   };
@@ -131,40 +133,40 @@ export const FaceAttendance: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 text-[#F8FAFC]">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Facial Recognition Attendance
+        <h2 className="text-2xl font-bold tracking-tight text-[#F8FAFC]">
+          Facial Biometric Attendance
         </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          Verify your physical presence and mark attendance in active lecture sessions via biometric facial recognition.
+        <p className="text-xs text-[#A1AEC2] mt-1">
+          Verify your physical presence and record attendance in live sessions using browser face recognition.
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center space-x-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {verificationResult && (
-        <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-3">
+        <div className="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 space-y-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-900">Attendance Recorded Successfully!</h3>
-              <p className="text-xs text-slate-600">
-                Status: <span className="font-bold uppercase text-emerald-700">{verificationResult.status}</span> | Method: {verificationResult.verification_method}
+              <h3 className="font-bold text-lg text-[#F8FAFC]">Attendance Recorded Successfully!</h3>
+              <p className="text-xs text-[#A1AEC2]">
+                Status: <span className="font-bold uppercase text-emerald-400">{verificationResult.status}</span> | Method: {verificationResult.verification_method}
               </p>
             </div>
           </div>
-          <div className="text-xs bg-white/80 p-3 rounded-xl border border-emerald-100 flex justify-between">
-            <span>Subject: <strong>{verificationResult.subject_name}</strong></span>
-            <span>Recorded at: <strong>{new Date(verificationResult.recorded_at).toLocaleTimeString()}</strong></span>
+          <div className="text-xs bg-[#0D1525] p-3.5 rounded-xl border border-[#23334A] flex flex-wrap justify-between gap-2">
+            <span>Subject: <strong className="text-[#F8FAFC]">{verificationResult.subject_name}</strong></span>
+            <span>Recorded at: <strong className="text-[#F8FAFC]">{new Date(verificationResult.recorded_at).toLocaleTimeString()}</strong></span>
           </div>
         </div>
       )}
@@ -172,92 +174,130 @@ export const FaceAttendance: React.FC = () => {
       {activeSessions.length === 0 ? (
         <EmptyState
           title="No Active Lecture Sessions Available"
-          description="Your instructors have not started any active attendance sessions for your enrolled course and semester right now."
+          description="Your instructors have not initiated any live attendance sessions for your enrolled course and semester right now."
+          icon={Camera}
         />
       ) : (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+        <div className="bg-[#111D30] rounded-3xl p-6 sm:p-8 border border-[#23334A] shadow-xl space-y-6">
           {/* Lecture Session Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Select Active Lecture Session *
+            <label className="block text-xs font-semibold text-[#A1AEC2] uppercase tracking-wider mb-2">
+              Select Active Lecture Session
             </label>
             <select
               value={selectedSessionId || ''}
               onChange={(e) => setSelectedSessionId(Number(e.target.value))}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
+              className="w-full bg-[#0D1525] border border-[#23334A] text-[#F8FAFC] rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#3B82F6]"
             >
               {activeSessions.map((s) => (
                 <option key={s.session_id} value={s.session_id}>
-                  {s.subject_name} ({s.session_code}) — {s.teacher_name} [{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}]
+                  {s.subject_name} ({s.session_code}) — Instructor: {s.teacher_name} ({s.start_time} - {s.end_time})
                 </option>
               ))}
             </select>
           </div>
 
           {/* Camera Viewport */}
-          <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-video max-w-lg mx-auto flex items-center justify-center border-2 border-slate-200 shadow-inner">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-            />
-            <canvas ref={canvasRef} className="hidden" />
+          <div className="space-y-4">
+            <div className="relative w-full max-w-md mx-auto aspect-4/3 rounded-2xl bg-[#080D19] border border-[#23334A] overflow-hidden flex items-center justify-center">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover transform -scale-x-100 ${
+                  cameraActive ? 'block' : 'hidden'
+                }`}
+              />
+              <canvas ref={canvasRef} className="hidden" />
 
-            {/* Facial Oval Alignment Overlay */}
-            {cameraActive && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-64 rounded-[50%] border-2 border-dashed border-blue-400/80 shadow-2xl animate-pulse"></div>
-              </div>
-            )}
+              {!cameraActive && (
+                <div className="text-center p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#16243A] text-[#3B82F6] flex items-center justify-center mx-auto">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs text-[#A1AEC2]">
+                    Camera feed is currently inactive. Click below to initialize facial biometric camera.
+                  </p>
+                </div>
+              )}
 
-            {!cameraActive && (
-              <div className="text-center p-6 space-y-3">
-                <Camera className="w-12 h-12 text-slate-500 mx-auto" />
-                <p className="text-xs text-slate-400">Camera preview inactive</p>
-                <button
-                  onClick={startCamera}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold text-xs shadow-md hover:bg-blue-700 transition-colors"
-                >
-                  Start Camera Preview
-                </button>
-              </div>
-            )}
-          </div>
-
-          {cameraError && (
-            <p className="text-xs text-rose-600 text-center font-medium">{cameraError}</p>
-          )}
-
-          {/* GPS Info pill */}
-          {gpsLocation && (
-            <div className="flex items-center justify-center text-xs text-slate-500 space-x-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-              <span>
-                GPS Location Acquired (Accuracy: &plusmn;{Math.round(gpsLocation.acc)}m)
-              </span>
-            </div>
-          )}
-
-          {/* Action Button */}
-          <div className="flex justify-center pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleVerify}
-              disabled={!cameraActive || verifying || !selectedSessionId}
-              className="w-full sm:w-auto px-8 py-3 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-600/20 flex items-center justify-center"
-            >
-              {verifying ? (
+              {cameraActive && (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Verifying Face & Geofence...
-                </>
-              ) : (
-                <>
-                  <UserCheck className="w-4 h-4 mr-2" /> Verify Face Attendance
+                  {/* Scanning Radar Line */}
+                  <div className="biometric-scanner-line" />
+                  <div className="absolute top-3 left-3 bg-[#080D19]/80 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-mono text-[#22D3EE] border border-[#23334A] flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
+                    <span>SCANNING FACE FRAME</span>
+                  </div>
                 </>
               )}
-            </button>
+            </div>
+
+            {cameraError && (
+              <p className="text-center text-xs text-rose-400 font-medium">{cameraError}</p>
+            )}
+
+            {/* Controls */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {!cameraActive ? (
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold shadow-md flex items-center space-x-2 transition-all"
+                >
+                  <Video className="w-4 h-4" />
+                  <span>Start Camera</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleVerify}
+                    disabled={verifying}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#22D3EE] hover:opacity-95 text-[#080D19] text-xs font-bold shadow-lg shadow-blue-500/20 flex items-center space-x-2 transition-all"
+                  >
+                    {verifying ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Verifying Embeddings...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4" />
+                        <span>Capture & Verify Attendance</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="px-4 py-2.5 rounded-xl bg-[#16243A] hover:bg-[#1D304D] text-[#A1AEC2] text-xs font-semibold border border-[#23334A] flex items-center space-x-1.5 transition-colors"
+                  >
+                    <VideoOff className="w-4 h-4" />
+                    <span>Stop</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Telemetry info */}
+            <div className="pt-4 border-t border-[#23334A] flex flex-wrap items-center justify-between text-[11px] text-[#64748B]">
+              <span className="flex items-center">
+                <MapPin className="w-3.5 h-3.5 mr-1 text-[#22D3EE]" />
+                GPS Telemetry:{' '}
+                {gpsLocation ? (
+                  <span className="text-emerald-400 ml-1">Captured (±{Math.round(gpsLocation.acc)}m)</span>
+                ) : (
+                  <span className="text-[#A1AEC2] ml-1">Locating campus boundary...</span>
+                )}
+              </span>
+              <span className="flex items-center">
+                <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                Cosine distance normalized verification
+              </span>
+            </div>
           </div>
         </div>
       )}

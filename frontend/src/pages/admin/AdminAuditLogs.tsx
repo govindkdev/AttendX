@@ -11,8 +11,8 @@ import {
   UserCheck,
   RefreshCw,
   AlertCircle,
-  FileCode,
   Shield,
+  Layers
 } from 'lucide-react';
 
 export const AdminAuditLogs: React.FC = () => {
@@ -55,49 +55,52 @@ export const AdminAuditLogs: React.FC = () => {
 
   const getActionBadgeColor = (action: string) => {
     if (action.includes('FAIL') || action.includes('RESET') || action.includes('DELETE')) {
-      return 'bg-rose-50 text-rose-700 border-rose-200';
+      return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
     }
     if (action.includes('CORRECTION') || action.includes('UPDATE') || action.includes('OVERRIDE')) {
-      return 'bg-amber-50 text-amber-700 border-amber-200';
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
     }
-    if (action.includes('SUCCESS') || action.includes('ENROLLMENT') || action.includes('CREATE')) {
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (action.includes('SUCCESS') || action.includes('CREATE') || action.includes('ENROLL')) {
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     }
-    return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    return 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/20';
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-indigo-600" />
-            Security & System Audit Ledger
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Tamper-Evident Trail
+          </span>
+          <h1 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-[#3B82F6]" />
+            Security & Compliance Audit Logs
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Immutable, chronological record of administrative actions, biometric registrations, status overrides, and security events.
+          <p className="text-xs text-[#A1AEC2] mt-1">
+            Immutable system logs recording credential actions, biometric template events, attendance corrections, and governance changes.
           </p>
         </div>
         <button
           onClick={loadLogs}
-          className="inline-flex items-center gap-2 px-3.5 py-2 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg shadow-sm transition"
+          className="inline-flex items-center gap-2 px-3.5 py-2 border border-[#23334A] text-[#F8FAFC] bg-[#0D1525] hover:border-[#3B82F6] text-xs font-semibold rounded-xl transition"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5 text-[#3B82F6]" />
           Refresh Audit Trail
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-3">
+      <div className="bg-[#111D30] p-4 rounded-xl border border-[#23334A] flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-3" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by action name, user, details or IP..."
-            className="w-full text-sm pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs pl-9 pr-4 py-2 border border-[#23334A] rounded-xl bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           />
         </div>
 
@@ -105,7 +108,7 @@ export const AdminAuditLogs: React.FC = () => {
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
             <option value="">All Actions</option>
             <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
@@ -122,7 +125,7 @@ export const AdminAuditLogs: React.FC = () => {
           <select
             value={resourceFilter}
             onChange={(e) => setResourceFilter(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-xs border border-[#23334A] rounded-xl px-3 py-2 bg-[#0D1525] text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
             <option value="">All Resources</option>
             <option value="USER">USER</option>
@@ -140,7 +143,7 @@ export const AdminAuditLogs: React.FC = () => {
               setActionFilter('');
               setResourceFilter('');
             }}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1"
+            className="text-xs text-[#3B82F6] hover:text-[#60A5FA] font-medium px-2 py-1"
           >
             Reset Filters
           </button>
@@ -148,9 +151,9 @@ export const AdminAuditLogs: React.FC = () => {
       </div>
 
       {/* Audit Log Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-[#111D30] border border-[#23334A] rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Loading security audit records...</div>
+          <div className="p-8 text-center text-[#A1AEC2] text-xs">Loading security audit records...</div>
         ) : filteredLogs.length === 0 ? (
           <EmptyState
             title="No audit log entries found"
@@ -159,26 +162,26 @@ export const AdminAuditLogs: React.FC = () => {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <table className="w-full text-left text-xs text-[#A1AEC2]">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase font-semibold border-b border-[#23334A]">
                 <tr>
-                  <th className="px-5 py-3">Timestamp</th>
-                  <th className="px-5 py-3">Action Event</th>
-                  <th className="px-5 py-3">Actor Role & ID</th>
-                  <th className="px-5 py-3">Target Resource</th>
-                  <th className="px-5 py-3">Audit Details & Context</th>
-                  <th className="px-5 py-3">IP Address</th>
+                  <th className="px-5 py-3.5">Timestamp</th>
+                  <th className="px-5 py-3.5">Action Event</th>
+                  <th className="px-5 py-3.5">Actor Role & ID</th>
+                  <th className="px-5 py-3.5">Target Resource</th>
+                  <th className="px-5 py-3.5">Audit Details & Context</th>
+                  <th className="px-5 py-3.5">IP Address</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#23334A]">
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/75 transition">
-                    <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-[#16243A]/60 transition-colors">
+                    <td className="px-5 py-3.5 text-xs text-[#A1AEC2] whitespace-nowrap">
                       {new Date(log.timestamp).toLocaleString('en-IN')}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${getActionBadgeColor(
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${getActionBadgeColor(
                           log.action
                         )}`}
                       >
@@ -186,23 +189,23 @@ export const AdminAuditLogs: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="font-semibold text-slate-800 text-xs">
+                      <div className="font-semibold text-[#F8FAFC] text-xs">
                         Actor #{log.actor_id || 'System'}
                       </div>
-                      <div className="text-[11px] uppercase font-bold text-slate-400">{log.actor_role}</div>
+                      <div className="text-[10px] uppercase font-bold text-[#3B82F6]">{log.actor_role}</div>
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap text-xs">
-                      <span className="font-medium text-slate-700">{log.resource_type || 'GLOBAL'}</span>
+                      <span className="font-medium text-[#F8FAFC]">{log.resource_type || 'GLOBAL'}</span>
                       {log.resource_id && (
-                        <span className="text-slate-400 font-mono text-[11px]"> #{log.resource_id}</span>
+                        <span className="text-[#64748B] font-mono text-[11px]"> #{log.resource_id}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600 max-w-md">
+                    <td className="px-5 py-3.5 text-xs text-[#A1AEC2] max-w-md">
                       <div className="truncate font-sans" title={log.details || ''}>
                         {log.details || '—'}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs font-mono text-slate-400 whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-xs font-mono text-[#64748B] whitespace-nowrap">
                       {log.ip_address || '127.0.0.1'}
                     </td>
                   </tr>

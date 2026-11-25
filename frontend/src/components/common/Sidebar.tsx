@@ -22,15 +22,25 @@ import {
   FileCheck,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  X,
+  AlertTriangle,
+  FolderLock
 } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  onToggle,
+  mobileOpen = false,
+  onCloseMobile,
+}) => {
   const { user, logout } = useAuth();
 
   const getNavItems = () => {
@@ -39,10 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     if (user.role === 'STUDENT') {
       return [
         { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/student/attendance-history', icon: History, label: 'Attendance History' },
         { to: '/student/face-attendance', icon: Camera, label: 'Face Attendance' },
-        { to: '/student/scan-qr', icon: QrCode, label: 'Scan QR' },
+        { to: '/student/scan-qr', icon: QrCode, label: 'QR Attendance' },
         { to: '/student/timetable', icon: CalendarDays, label: 'Timetable' },
-        { to: '/student/attendance-history', icon: History, label: 'History' },
         { to: '/student/leave-requests', icon: FileCheck, label: 'Leave Requests' },
         { to: '/student/notifications', icon: Bell, label: 'Notifications' },
         { to: '/student/reports', icon: FileSpreadsheet, label: 'Reports' },
@@ -55,9 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       return [
         { to: '/teacher/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/teacher/start-attendance', icon: Camera, label: 'Start Attendance' },
+        { to: '/teacher/start-attendance', icon: Camera, label: 'Face Attendance' },
         { to: '/teacher/qr-attendance', icon: QrCode, label: 'QR Attendance' },
-        { to: '/teacher/manual-attendance', icon: UserCheck, label: 'Manual Entry' },
+        { to: '/teacher/manual-attendance', icon: UserCheck, label: 'Manual Attendance' },
         { to: '/teacher/students', icon: Users, label: 'Students' },
+        { to: '/teacher/reports', icon: History, label: 'Attendance Records' },
         { to: '/teacher/reports', icon: FileSpreadsheet, label: 'Reports' },
         { to: '/teacher/notifications', icon: Bell, label: 'Parent Alerts' },
         { to: '/teacher/profile', icon: UserCircle, label: 'Profile' },
@@ -65,11 +77,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       ];
     }
 
-    // ADMIN
+    // ADMINISTRATOR
     return [
       { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { to: '/admin/students', icon: GraduationCap, label: 'Students' },
-      { to: '/admin/teachers', icon: Users, label: 'Teachers' },
+      { to: '/admin/teachers', icon: Users, label: 'Faculty' },
       { to: '/admin/departments', icon: Building2, label: 'Departments' },
       { to: '/admin/courses', icon: BookOpen, label: 'Courses' },
       { to: '/admin/subjects', icon: FileText, label: 'Subjects' },
@@ -77,8 +89,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       { to: '/admin/attendance', icon: History, label: 'Attendance Records' },
       { to: '/admin/face-datasets', icon: Camera, label: 'Face Datasets' },
       { to: '/admin/gps-settings', icon: MapPin, label: 'GPS Geofence' },
-      { to: '/admin/reports', icon: FileSpreadsheet, label: 'Reports' },
+      { to: '/admin/reports', icon: FileSpreadsheet, label: 'Reports & Analytics' },
       { to: '/admin/notifications', icon: Bell, label: 'Notifications' },
+      { to: '/admin/notifications', icon: AlertTriangle, label: 'Parent Alerts' },
       { to: '/admin/audit-logs', icon: ShieldCheck, label: 'Audit Logs' },
       { to: '/admin/settings', icon: Settings, label: 'Institute Settings' },
       { to: '/admin/profile', icon: UserCircle, label: 'Profile' },
@@ -87,73 +100,114 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
 
   const navItems = getNavItems();
 
-  return (
-    <aside
-      className={`fixed top-0 left-0 z-30 h-screen bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col border-r border-slate-800 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      {/* Brand Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
-        <Link to="/" className="flex items-center space-x-3 overflow-hidden">
-          <img
-            src="/assets/attendx-logo.png"
-            alt="AttendX Logo"
-            className="w-10 h-10 object-contain rounded-xl shrink-0 shadow-lg shadow-blue-500/20"
-          />
-          {!collapsed && (
-            <div className="leading-tight">
-              <span className="font-bold text-white text-lg tracking-tight">AttendX</span>
-              <span className="block text-[10px] text-blue-400 font-medium uppercase tracking-wider">
-                {user?.role} Portal
-              </span>
-            </div>
-          )}
-        </Link>
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
+  const sidebarContent = (
+    <div className="h-full flex flex-col justify-between">
+      {/* Top Section */}
+      <div>
+        {/* Brand Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-[#23334A]">
+          <Link to="/" className="flex items-center space-x-3 overflow-hidden">
+            <img
+              src="/assets/attendx-logo.png"
+              alt="AttendX"
+              className="w-8 h-8 object-contain rounded-xl shrink-0"
+            />
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="font-bold text-sm tracking-tight text-[#F8FAFC]">
+                  Attend<span className="text-[#3B82F6]">X</span>
+                </span>
+                <span className="text-[10px] text-[#A1AEC2] uppercase tracking-wider font-semibold">
+                  {user?.role === 'ADMIN' ? 'Admin Console' : user?.role === 'TEACHER' ? 'Faculty Portal' : 'Student Portal'}
+                </span>
+              </div>
+            )}
+          </Link>
+
+          {/* Close button for mobile */}
+          <button
+            onClick={onCloseMobile}
+            className="p-1 rounded-lg text-[#A1AEC2] hover:text-[#F8FAFC] md:hidden"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
+          {navItems.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={`${item.to}-${item.label}-${idx}`}
+                to={item.to}
+                onClick={onCloseMobile}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-[#16243A] text-[#3B82F6] font-semibold border-l-2 border-[#3B82F6] shadow-xs'
+                      : 'text-[#A1AEC2] hover:bg-[#16243A]/50 hover:text-[#F8FAFC]'
+                  } ${collapsed ? 'justify-center' : 'space-x-3'}`
+                }
+                title={collapsed ? item.label : undefined}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </NavLink>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Nav list */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`
-              }
-              title={collapsed ? item.label : undefined}
-            >
-              <Icon className={`w-5 h-5 shrink-0 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      {/* User Footer / Logout */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/40">
+      {/* Footer / Toggle & Logout */}
+      <div className="p-3 border-t border-[#23334A] space-y-1">
         <button
           onClick={logout}
-          className="w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors group"
-          title={collapsed ? 'Sign out' : undefined}
+          className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors ${
+            collapsed ? 'justify-center' : 'space-x-3'
+          }`}
+          title={collapsed ? 'Sign Out' : undefined}
         >
-          <LogOut className={`w-5 h-5 shrink-0 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
+          <LogOut className="w-4 h-4 shrink-0" />
           {!collapsed && <span>Sign Out</span>}
         </button>
+
+        {/* Desktop Collapse Toggle */}
+        <button
+          onClick={onToggle}
+          className="hidden md:flex w-full items-center justify-center p-2 rounded-xl text-[#64748B] hover:text-[#A1AEC2] hover:bg-[#16243A] transition-colors"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Fixed Sidebar */}
+      <aside
+        className={`hidden md:flex fixed top-0 left-0 z-30 h-screen bg-[#0B1322] text-[#A1AEC2] transition-all duration-300 flex-col border-r border-[#23334A] ${
+          collapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="fixed inset-0 bg-[#080D19]/80 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <aside className="fixed inset-y-0 left-0 w-72 bg-[#0B1322] text-[#A1AEC2] border-r border-[#23334A] shadow-2xl z-10">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };

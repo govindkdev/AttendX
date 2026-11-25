@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import type { Subject, Course, Department, Branch } from '@/types';
 import { EmptyState } from '@/components/common/EmptyState';
-import { FileText, Plus, AlertCircle, X, Search, Edit2, Trash2 } from 'lucide-react';
+import { FileText, Plus, AlertCircle, X, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
 
 export const AdminSubjects: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -109,6 +109,7 @@ export const AdminSubjects: React.FC = () => {
 
     setSubmitting(true);
     setErrorMsg(null);
+
     try {
       await api.updateSubject(editingSubject.id, {
         name: editName.trim(),
@@ -139,7 +140,7 @@ export const AdminSubjects: React.FC = () => {
       setDeletingSubject(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Cannot delete subject: Active timetable or lecture sessions reference this subject.');
+      alert(err.message || 'Cannot delete subject: Lectures or attendance records depend on it.');
     } finally {
       setSubmitting(false);
     }
@@ -151,12 +152,26 @@ export const AdminSubjects: React.FC = () => {
       s.code.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Curriculum Subjects</h2>
-          <p className="text-xs text-slate-500 mt-1">Configure academic courses, semester offerings, and credit loads.</p>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Academic Courses & Subjects
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Subjects & Curriculum Directory
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">Manage curricular modules, lecture credit weightings, and semesters.</p>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -166,9 +181,9 @@ export const AdminSubjects: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search subjects..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-2.5" />
           </div>
 
           <button
@@ -176,7 +191,7 @@ export const AdminSubjects: React.FC = () => {
               setErrorMsg(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors shrink-0"
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all shrink-0"
           >
             <Plus className="w-4 h-4 mr-1.5" /> Add Subject
           </button>
@@ -184,51 +199,47 @@ export const AdminSubjects: React.FC = () => {
       </div>
 
       {subjects.length > 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-[#111D30] rounded-2xl border border-[#23334A] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+            <table className="min-w-full divide-y divide-[#23334A] text-left text-xs">
+              <thead className="bg-[#0D1525] text-[#A1AEC2] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-3.5 px-6">Subject Code</th>
                   <th className="py-3.5 px-6">Subject Title</th>
                   <th className="py-3.5 px-6">Semester</th>
                   <th className="py-3.5 px-6">Credits</th>
-                  <th className="py-3.5 px-6">Status</th>
                   <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#23334A]">
                 {filtered.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-4 px-6 font-mono font-bold text-blue-700">
+                  <tr key={s.id} className="hover:bg-[#16243A]/60 transition-colors">
+                    <td className="py-4 px-6 font-mono font-bold text-[#3B82F6]">
                       {s.code}
                     </td>
-                    <td className="py-4 px-6 font-semibold text-slate-900">
+                    <td className="py-4 px-6 font-semibold text-[#F8FAFC]">
                       {s.name}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-medium">
+                    <td className="py-4 px-6 text-[#A1AEC2]">
                       Semester {s.semester}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 font-medium">
-                      {s.credits} Credits
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        ACTIVE
+                    <td className="py-4 px-6 text-[#A1AEC2]">
+                      <span className="px-2 py-0.5 rounded-md bg-[#0D1525] border border-[#23334A] font-semibold text-[#F8FAFC]">
+                        {s.credits} Credits
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
+                      <div className="flex items-center justify-end space-x-1">
                         <button
                           onClick={() => openEditModal(s)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#3B82F6] hover:bg-[#16243A] transition-colors"
                           title="Edit Subject"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openDeleteModal(s)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-[#16243A] transition-colors"
                           title="Delete Subject"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -244,9 +255,9 @@ export const AdminSubjects: React.FC = () => {
       ) : (
         <EmptyState
           icon={FileText}
-          title="No subjects configured"
-          description="Create your first subject syllabus (e.g. Artificial Intelligence, Data Structures, Fluid Mechanics)."
-          actionText="Add Subject"
+          title="No subjects registered"
+          description="Register subjects to begin scheduling classes and logging attendance."
+          actionText="Add First Subject"
           onAction={() => {
             setErrorMsg(null);
             setModalOpen(true);
@@ -254,85 +265,92 @@ export const AdminSubjects: React.FC = () => {
         />
       )}
 
-      {/* Add Subject Modal */}
+      {/* Create Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Add Curriculum Subject</h3>
-            <p className="text-xs text-slate-500 mb-6">Enter code, syllabus title, and semester.</p>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Add Academic Subject</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Create course module and define academic credit weighting.</p>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Subject Code *
-                </label>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. CS501"
-                  required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none uppercase"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Subject Code *</label>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. CS501"
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Credits *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={credits}
+                    onChange={(e) => setCredits(Number(e.target.value))}
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Subject Name *
-                </label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Subject Name *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Artificial Intelligence"
+                  placeholder="e.g. Database Management Systems"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Department *
-                </label>
-                <select
-                  value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : '')}
-                  required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.code})
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Course *
-                  </label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Department *</label>
+                  <select
+                    value={departmentId}
+                    onChange={(e) => setDepartmentId(Number(e.target.value))}
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Course *</label>
                   <select
                     value={courseId}
-                    onChange={(e) => setCourseId(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => setCourseId(Number(e.target.value))}
                     required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
                     <option value="">Select Course</option>
                     {courses.map((c) => (
@@ -342,16 +360,15 @@ export const AdminSubjects: React.FC = () => {
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Branch (Optional)
-                  </label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Branch (Optional)</label>
                   <select
                     value={branchId}
                     onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : '')}
-                    disabled={!courseId}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white disabled:opacity-50"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   >
                     <option value="">All Branches</option>
                     {branches.map((b) => (
@@ -361,52 +378,36 @@ export const AdminSubjects: React.FC = () => {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Semester *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Semester *</label>
+                  <select
                     value={semester}
                     onChange={(e) => setSemester(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Credits *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={credits}
-                    onChange={(e) => setCredits(Number(e.target.value))}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
                   {submitting ? 'Creating...' : 'Create Subject'}
                 </button>
@@ -416,78 +417,81 @@ export const AdminSubjects: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Subject Modal */}
+      {/* Edit Modal */}
       {editModalOpen && editingSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative">
             <button
-              onClick={() => setEditModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              onClick={() => {
+                setEditModalOpen(false);
+                setEditingSubject(null);
+              }}
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Edit Subject</h3>
-            <p className="text-xs text-slate-500 mb-5">Editing: <span className="font-mono text-slate-800">{editingSubject.code}</span></p>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Edit Subject</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Editing {editingSubject.code}</p>
 
             <form onSubmit={handleUpdate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Subject Name *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Subject Name *</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Semester</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Semester *</label>
+                  <select
                     value={editSemester}
                     onChange={(e) => setEditSemester(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Credits</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Credits *</label>
                   <input
                     type="number"
-                    min={1}
-                    max={10}
+                    min="1"
+                    max="10"
                     value={editCredits}
                     onChange={(e) => setEditCredits(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    setEditingSubject(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -497,26 +501,26 @@ export const AdminSubjects: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Subject Modal */}
+      {/* Delete Modal */}
       {deleteModalOpen && deletingSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Subject?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-800">{deletingSubject.name}</span> ({deletingSubject.code})?
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Deletion will be blocked if active timetable slots or lecture sessions reference this subject.
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Subject?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove <span className="font-semibold text-[#F8FAFC]">{deletingSubject.name}</span> ({deletingSubject.code})?
             </p>
 
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setDeletingSubject(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
@@ -526,7 +530,7 @@ export const AdminSubjects: React.FC = () => {
                 disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm"
               >
-                {submitting ? 'Deleting...' : 'Confirm Delete'}
+                {submitting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

@@ -1,29 +1,174 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --bg-main: #080D19;
+    --bg-secondary: #0D1525;
+    --bg-sidebar: #0B1322;
+    --bg-card: #111D30;
+    --bg-elevated: #16243A;
+
+    --primary-blue: #2563EB;
+    --electric-blue: #3B82F6;
+    --purple-accent: #8B5CF6;
+    --cyan-accent: #22D3EE;
+
+    --text-primary: #F8FAFC;
+    --text-secondary: #A1AEC2;
+    --text-muted: #64748B;
+    --border-color: #23334A;
+
+    --status-success: #22C55E;
+    --status-warning: #F59E0B;
+    --status-error: #EF4444;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-blue-600 selection:text-white;
+    background-color: #080D19;
+    color: #F8FAFC;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: #2563EB;
+    color: #FFFFFF;
   }
 }
 
-/* Custom scrollbars */
+/* Custom Typography Helpers */
+.font-heading {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+
+.font-stats {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Dark SaaS Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0B1322;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #23334A;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #3B82F6;
+}
+
+/* Premium Dark Card & Surface Utilities */
+.attendx-card {
+  background-color: #111D30;
+  border: 1px solid #23334A;
+  border-radius: 1rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.attendx-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.attendx-elevated {
+  background-color: #16243A;
+  border: 1px solid #23334A;
+  border-radius: 1rem;
+}
+
+.attendx-gradient-cta {
+  background: linear-gradient(135deg, #2563EB 0%, #8B5CF6 100%);
+  color: #FFFFFF;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+}
+
+.attendx-gradient-cta:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.35);
+}
+
+.attendx-gradient-text {
+  background: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.attendx-gradient-purple {
+  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.attendx-input {
+  background-color: #0D1525;
+  border: 1px solid #23334A;
+  color: #F8FAFC;
+  border-radius: 0.75rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.attendx-input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.attendx-input::placeholder {
+  color: #64748B;
+}
+
+/* Subtle background lighting effect */
+.bg-radial-subtle {
+  background-image: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.15) 0%, rgba(13, 21, 37, 0) 70%);
+}
+
+.bg-radial-card {
+  background-image: radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+}
+
+/* Biometric Scanner Radar Effect */
+@keyframes biometricScan {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 98%;
+    opacity: 0.8;
+  }
+}
+
+.biometric-scanner-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22D3EE, #3B82F6, transparent);
+  box-shadow: 0 0 15px #3B82F6;
+  animation: biometricScan 2.2s ease-in-out infinite alternate;
 }
 
 /* ==========================================================================
-   FIX 2 — Premium Landing-Page Hero Entrance Animations
+   Hero Entrance Animations (Required for tests and presentation)
    ========================================================================== */
 @keyframes heroEntranceFadeUp {
   0% {
@@ -68,7 +213,7 @@
 }
 
 /* ==========================================================================
-   FIX 3 — Scroll-Triggered Reveal Animations
+   Scroll-Triggered Reveal Animations (Required for tests)
    ========================================================================== */
 .scroll-reveal-init {
   opacity: 0;
@@ -83,6 +228,37 @@
 }
 
 /* ==========================================================================
+   Portal Modal Animations
+   ========================================================================== */
+@keyframes modalBackdropFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalCardScaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop-animate {
+  animation: modalBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-card-animate {
+  animation: modalCardScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================================
    Accessibility: prefers-reduced-motion
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
@@ -94,7 +270,10 @@
   .hero-animate-cta,
   .hero-animate-indicators,
   .scroll-reveal-init,
-  .scroll-reveal-visible {
+  .scroll-reveal-visible,
+  .modal-backdrop-animate,
+  .modal-card-animate,
+  .biometric-scanner-line {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

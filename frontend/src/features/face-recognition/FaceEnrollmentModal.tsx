@@ -102,6 +102,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         if (prev.length >= 30) {
           clearInterval(interval);
           setIsBursting(false);
+          burstIntervalRef.current = null;
           return prev;
         }
         if (!videoRef.current) return prev;
@@ -114,7 +115,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         return [...prev, dataUrl];
       });
-    }, 120);
+    }, 150);
 
     burstIntervalRef.current = interval;
   };
@@ -127,22 +128,26 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
     setIsBursting(false);
   };
 
-  const removeSample = (idx: number) => {
-    setCapturedSamples((prev) => prev.filter((_, i) => i !== idx));
+  const removeSample = (indexToRemove: number) => {
+    setCapturedSamples((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleSubmit = async () => {
-    if (!student || capturedSamples.length < 25) return;
+    if (!student || capturedSamples.length < 25) {
+      setErrorMsg('Minimum 25 frames are required to generate an accurate biometric face template.');
+      return;
+    }
+
     setEnrolling(true);
     setErrorMsg(null);
+
     try {
       const res = await api.enrollFace(capturedSamples, undefined, student.profile_id);
+
       stopCamera();
-      onSuccess(
-        `Biometric enrollment complete for ${student.full_name} (${res.sample_count} frames processed, quality: ${res.quality_score}).`
-      );
+      onSuccess(res.message || `Successfully enrolled 128-d face template for ${student.full_name}`);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Face biometric enrollment failed. Please check frame quality and retry.');
+      setErrorMsg(err.message || 'Face enrollment failed. Please retry.');
     } finally {
       setEnrolling(false);
     }
@@ -157,17 +162,17 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
   const progressPct = Math.min(100, Math.round((count / targetMax) * 100));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 relative max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+      <div className="bg-[#111D30] rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#23334A] relative max-h-[92vh] flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between pb-4 border-b border-[#23334A] shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-              <Camera className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC] flex items-center space-x-2">
+              <Camera className="w-5 h-5 text-[#3B82F6]" />
               <span>Biometric Face Enrollment (25–30 Samples)</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Enrolling: <span className="font-semibold text-slate-800">{student.full_name}</span> ({student.student_id} · Roll: {student.roll_number})
+            <p className="text-xs text-[#A1AEC2] mt-0.5">
+              Enrolling: <span className="font-semibold text-[#F8FAFC]">{student.full_name}</span> ({student.student_id} · Roll: {student.roll_number})
             </p>
           </div>
           <button
@@ -175,15 +180,15 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
               stopCamera();
               onClose();
             }}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC] hover:bg-[#16243A] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {errorMsg && (
-          <div className="my-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2 shrink-0">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="my-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2 shrink-0">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -191,7 +196,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="space-y-4 overflow-y-auto py-3 flex-1 pr-1">
           {/* Live Video Camera Stream with Oval Guide */}
-          <div className="relative bg-slate-950 rounded-2xl overflow-hidden aspect-video flex items-center justify-center shadow-inner">
+          <div className="relative bg-[#080D19] rounded-2xl overflow-hidden aspect-video flex items-center justify-center border border-[#23334A] shadow-inner">
             <video
               ref={videoRef}
               autoPlay
@@ -200,12 +205,12 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
               className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
             />
             {!cameraActive && (
-              <div className="text-center text-slate-400 p-6">
-                <VideoOff className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <div className="text-center text-[#A1AEC2] p-6">
+                <VideoOff className="w-10 h-10 mx-auto mb-2 opacity-50 text-[#64748B]" />
                 <p className="text-xs font-medium">Camera stream inactive</p>
                 <button
                   onClick={startCamera}
-                  className="mt-3 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+                  className="mt-3 px-3 py-1.5 rounded-lg bg-[#2563EB] text-white text-xs font-semibold hover:bg-[#1d4ed8]"
                 >
                   Start Camera
                 </button>
@@ -216,7 +221,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div
                   className={`w-44 h-56 border-2 border-dashed rounded-[50%] transition-colors duration-200 ${
-                    isReady ? 'border-emerald-400/90 shadow-[0_0_15px_rgba(52,211,153,0.4)]' : 'border-blue-400/80'
+                    isReady ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.35)]' : 'border-[#3B82F6]'
                   }`}
                 />
                 {isBursting && (
@@ -230,14 +235,14 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           </div>
 
           {/* Capture Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0D1525] p-3 rounded-xl border border-[#23334A]">
             <div className="flex items-center space-x-2">
               {!isBursting ? (
                 <button
                   type="button"
                   onClick={startBurstCapture}
                   disabled={!cameraActive || count >= targetMax}
-                  className="inline-flex items-center px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 transition-all"
+                  className="inline-flex items-center px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-sm disabled:opacity-50 transition-all"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Auto-Capture 30 Frames (Burst)
                 </button>
@@ -245,7 +250,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
                 <button
                   type="button"
                   onClick={stopBurstCapture}
-                  className="inline-flex items-center px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-all"
+                  className="inline-flex items-center px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition-all"
                 >
                   <Pause className="w-3.5 h-3.5 mr-1.5" /> Pause Auto-Capture
                 </button>
@@ -255,9 +260,9 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
                 type="button"
                 onClick={captureSingleFrame}
                 disabled={!cameraActive || count >= targetMax || isBursting}
-                className="inline-flex items-center px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium disabled:opacity-50 transition-all"
+                className="inline-flex items-center px-3 py-2 rounded-xl bg-[#16243A] border border-[#23334A] hover:border-[#3B82F6] text-[#F8FAFC] text-xs font-medium disabled:opacity-50 transition-all"
               >
-                <Camera className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> Single Frame
+                <Camera className="w-3.5 h-3.5 mr-1.5 text-[#3B82F6]" /> Single Frame
               </button>
             </div>
 
@@ -266,7 +271,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
                 type="button"
                 onClick={() => setCapturedSamples([])}
                 disabled={isBursting}
-                className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+                className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-1"
               >
                 Clear All ({count})
               </button>
@@ -276,12 +281,12 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           {/* Progress Bar */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-semibold text-slate-700">
-                Samples Captured: <span className={isReady ? 'text-emerald-600' : 'text-blue-600'}>{count}</span> / {targetMax}
+              <span className="font-semibold text-[#A1AEC2]">
+                Samples Captured: <span className={isReady ? 'text-emerald-400' : 'text-[#3B82F6]'}>{count}</span> / {targetMax}
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-[#A1AEC2]">
                 {isReady ? (
-                  <span className="text-emerald-700 font-bold inline-flex items-center">
+                  <span className="text-emerald-400 font-bold inline-flex items-center">
                     <CheckCircle2 className="w-3 h-3 mr-1" /> Minimum 25 frames reached
                   </span>
                 ) : (
@@ -289,10 +294,10 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
                 )}
               </span>
             </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="w-full h-2.5 bg-[#0D1525] rounded-full overflow-hidden border border-[#23334A]">
               <div
                 className={`h-full transition-all duration-300 rounded-full ${
-                  isReady ? 'bg-emerald-500' : 'bg-blue-600'
+                  isReady ? 'bg-emerald-400' : 'bg-[#3B82F6]'
                 }`}
                 style={{ width: `${progressPct}%` }}
               />
@@ -302,25 +307,25 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           {/* Captured Samples Gallery */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-[#A1AEC2] uppercase tracking-wider">
                 Captured Frame Gallery ({count})
               </h4>
-              <p className="text-[11px] text-slate-400">Hover or click sample to remove</p>
+              <p className="text-[11px] text-[#64748B]">Hover to remove frame</p>
             </div>
 
             {count === 0 ? (
-              <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+              <div className="p-6 text-center bg-[#0D1525] rounded-xl border border-dashed border-[#23334A] text-[#64748B] text-xs">
                 No frames captured yet. Click "Auto-Capture 30 Frames" or "Single Frame" to start.
               </div>
             ) : (
-              <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 max-h-40 overflow-y-auto p-2 bg-[#0D1525] rounded-xl border border-[#23334A]">
                 {capturedSamples.map((src, idx) => (
                   <div
                     key={idx}
-                    className="relative group aspect-square rounded-lg overflow-hidden border border-slate-300/80 bg-slate-900 shadow-xs"
+                    className="relative group aspect-square rounded-lg overflow-hidden border border-[#23334A] bg-black shadow-xs"
                   >
                     <img src={src} alt={`Sample ${idx + 1}`} className="w-full h-full object-cover" />
-                    <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/70 text-[9px] text-white rounded font-mono">
+                    <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/80 text-[9px] text-[#F8FAFC] rounded font-mono">
                       {idx + 1}
                     </span>
                     <button
@@ -339,7 +344,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+        <div className="pt-4 border-t border-[#23334A] flex items-center justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -347,7 +352,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
               onClose();
             }}
             disabled={enrolling}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A] transition-colors"
           >
             Cancel
           </button>
@@ -356,14 +361,14 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={!isReady || enrolling}
-            className="inline-flex items-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all"
+            className="inline-flex items-center px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all"
           >
             {enrolling ? (
               'Extracting Embeddings & Saving...'
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4 mr-1.5" />
-                Save Dataset & Generate 128-d Biometric Template
+                Save Dataset & Generate Biometric Template
               </>
             )}
           </button>

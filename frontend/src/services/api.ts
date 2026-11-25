@@ -19,7 +19,8 @@ import type {
   AIQueryResponse,
 } from '@/types';
 
-const API_BASE = '/api/v1';
+const envApiUrl = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const API_BASE = envApiUrl ? `${envApiUrl}/api/v1` : '/api/v1';
 
 export class ApiError extends Error {
   status: number;
@@ -63,7 +64,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (response.status === 401) {
     clearToken();
-    if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/auth')) {
+    const isAuthRequest = endpoint.startsWith('/auth/login');
+    const isAuthPage =
+      window.location.pathname.includes('/login') ||
+      window.location.pathname.startsWith('/auth') ||
+      window.location.pathname.startsWith('/activate');
+
+    if (!isAuthRequest && !isAuthPage) {
       window.location.href = '/login';
     }
   }

@@ -19,6 +19,12 @@ import { Contact } from '@/pages/public/Contact';
 
 // Auth Pages
 import { Login } from '@/pages/auth/Login';
+import { PortalSelection } from '@/pages/auth/PortalSelection';
+import { StudentLogin } from '@/pages/auth/StudentLogin';
+import { TeacherLogin } from '@/pages/auth/TeacherLogin';
+import { AdminLogin } from '@/pages/auth/AdminLogin';
+import { StudentActivation } from '@/pages/auth/StudentActivation';
+import { TeacherActivation } from '@/pages/auth/TeacherActivation';
 import { CreateAccount } from '@/pages/auth/CreateAccount';
 import { ForgotPassword } from '@/pages/auth/ForgotPassword';
 import { ChangePassword } from '@/pages/auth/ChangePassword';
@@ -89,9 +95,18 @@ export function App() {
               <Route path="/contact" element={<Contact />} />
             </Route>
 
-            {/* Auth Routes */}
+            {/* Auth & Activation Routes */}
+            <Route path="/get-started" element={<PortalSelection />} />
+            <Route path="/portal-selection" element={<PortalSelection />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin/login" element={<Login />} />
+            <Route path="/login/student" element={<StudentLogin />} />
+            <Route path="/login/teacher" element={<TeacherLogin />} />
+            <Route path="/login/admin" element={<AdminLogin />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/teacher/login" element={<TeacherLogin />} />
+            <Route path="/student/login" element={<StudentLogin />} />
+            <Route path="/activate/student" element={<StudentActivation />} />
+            <Route path="/activate/teacher" element={<TeacherActivation />} />
             <Route path="/create-account" element={<CreateAccount />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/change-password" element={<ChangePassword />} />

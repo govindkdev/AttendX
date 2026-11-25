@@ -68,10 +68,13 @@ export const AdminCourses: React.FC = () => {
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || !name || !departmentId) return;
+    if (!code.trim() || !name.trim() || !departmentId) {
+      setErrorMsg('Please complete all course fields.');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMsg(null);
-
     try {
       await api.createCourse({
         code: code.trim().toUpperCase(),
@@ -80,9 +83,13 @@ export const AdminCourses: React.FC = () => {
         duration_years: Number(durationYears),
         total_semesters: Number(totalSemesters),
       });
+
       setCourseModalOpen(false);
       setCode('');
       setName('');
+      setDepartmentId('');
+      setDurationYears(4);
+      setTotalSemesters(8);
       await loadData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to create course.');
@@ -91,11 +98,11 @@ export const AdminCourses: React.FC = () => {
     }
   };
 
-  const openEditCourseModal = (course: Course) => {
-    setEditingCourse(course);
-    setEditName(course.name);
-    setEditDuration(course.duration_years);
-    setEditSemesters(course.total_semesters);
+  const openEditCourseModal = (c: Course) => {
+    setEditingCourse(c);
+    setEditName(c.name);
+    setEditDuration(c.duration_years);
+    setEditSemesters(c.total_semesters);
     setErrorMsg(null);
     setEditCourseModalOpen(true);
   };
@@ -103,9 +110,9 @@ export const AdminCourses: React.FC = () => {
   const handleUpdateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCourse || !editName.trim()) return;
+
     setSubmitting(true);
     setErrorMsg(null);
-
     try {
       await api.updateCourse(editingCourse.id, {
         name: editName.trim(),
@@ -122,8 +129,8 @@ export const AdminCourses: React.FC = () => {
     }
   };
 
-  const openDeleteCourseModal = (course: Course) => {
-    setDeletingCourse(course);
+  const openDeleteCourseModal = (c: Course) => {
+    setDeletingCourse(c);
     setDeleteCourseModalOpen(true);
   };
 
@@ -136,7 +143,7 @@ export const AdminCourses: React.FC = () => {
       setDeletingCourse(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Cannot delete course: Ensure no branches or enrolled students exist.');
+      alert(err.message || 'Cannot delete course: Please remove dependent branches and students first.');
     } finally {
       setSubmitting(false);
     }
@@ -144,29 +151,31 @@ export const AdminCourses: React.FC = () => {
 
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetCourseId || !branchCode || !branchName) return;
+    if (!targetCourseId || !branchCode.trim() || !branchName.trim()) return;
+
     setSubmitting(true);
     setErrorMsg(null);
-
     try {
       await api.createBranch({
         code: branchCode.trim().toUpperCase(),
         name: branchName.trim(),
         course_id: targetCourseId,
       });
+
       setBranchModalOpen(false);
       setBranchCode('');
       setBranchName('');
+      setTargetCourseId(null);
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to create branch.');
+      setErrorMsg(err.message || 'Failed to add branch.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const openDeleteBranchModal = (branch: Branch) => {
-    setDeletingBranch(branch);
+  const openDeleteBranchModal = (b: Branch) => {
+    setDeletingBranch(b);
     setDeleteBranchModalOpen(true);
   };
 
@@ -179,27 +188,41 @@ export const AdminCourses: React.FC = () => {
       setDeletingBranch(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Cannot delete branch: Ensure no enrolled students exist in this branch.');
+      alert(err.message || 'Cannot delete branch: Students may be enrolled in this branch.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const filteredCourses = courses.filter((c) => {
-    const q = search.toLowerCase();
-    const matchesCourse = c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
-    const matchesBranch = (branches[c.id] || []).some(
-      (b) => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q)
+    const term = search.toLowerCase();
+    const matchesCourse = c.name.toLowerCase().includes(term) || c.code.toLowerCase().includes(term);
+    const matchesBranch = branches[c.id]?.some(
+      (b) => b.name.toLowerCase().includes(term) || b.code.toLowerCase().includes(term)
     );
     return matchesCourse || matchesBranch;
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111D30] border border-[#23334A] rounded-2xl p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Degrees & Programs</h2>
-          <p className="text-xs text-slate-500 mt-1">Configure degrees, academic durations, and specialized branches.</p>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6] block mb-1">
+            Curriculum Structure
+          </span>
+          <h2 className="text-2xl font-bold font-heading text-[#F8FAFC] tracking-tight">
+            Academic Degrees & Programs
+          </h2>
+          <p className="text-xs text-[#A1AEC2] mt-1">Configure degrees, academic durations, and specialized branches.</p>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -209,9 +232,9 @@ export const AdminCourses: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search courses & branches..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC] placeholder-[#64748B]"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-2.5" />
           </div>
 
           <button
@@ -219,7 +242,7 @@ export const AdminCourses: React.FC = () => {
               setErrorMsg(null);
               setCourseModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors shrink-0"
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all shrink-0"
           >
             <Plus className="w-4 h-4 mr-1.5" /> Add Degree / Course
           </button>
@@ -227,18 +250,18 @@ export const AdminCourses: React.FC = () => {
       </div>
 
       {courses.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredCourses.map((c) => (
-            <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between">
+            <div key={c.id} className="bg-[#111D30] p-6 rounded-2xl border border-[#23334A] space-y-4 flex flex-col justify-between hover:border-[#3B82F6]/50 transition-colors">
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
+                    <span className="font-mono text-xs font-bold text-[#3B82F6] bg-[#3B82F6]/10 px-2.5 py-1 rounded-lg border border-[#3B82F6]/20">
                       {c.code}
                     </span>
-                    <h3 className="text-lg font-bold text-slate-900 mt-2">{c.name}</h3>
-                    <span className="text-xs text-slate-400">
-                      {c.duration_years} Years &bull; {c.total_semesters} Semesters
+                    <h3 className="text-lg font-bold font-heading text-[#F8FAFC] mt-2">{c.name}</h3>
+                    <span className="text-xs text-[#A1AEC2]">
+                      {c.duration_years} Years · {c.total_semesters} Semesters
                     </span>
                   </div>
 
@@ -249,20 +272,20 @@ export const AdminCourses: React.FC = () => {
                         setErrorMsg(null);
                         setBranchModalOpen(true);
                       }}
-                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700"
+                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-[#23334A] bg-[#0D1525] hover:border-[#3B82F6] text-xs font-semibold text-[#F8FAFC] transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Branch
+                      <Plus className="w-3.5 h-3.5 mr-1 text-[#3B82F6]" /> Branch
                     </button>
                     <button
                       onClick={() => openEditCourseModal(c)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      className="p-1.5 rounded-lg text-[#A1AEC2] hover:text-[#3B82F6] hover:bg-[#16243A] transition-colors"
                       title="Edit Course"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openDeleteCourseModal(c)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="p-1.5 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-[#16243A] transition-colors"
                       title="Delete Course"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -271,8 +294,8 @@ export const AdminCourses: React.FC = () => {
                 </div>
 
                 {/* Branches pill list */}
-                <div className="pt-3 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                <div className="pt-3 border-t border-[#23334A]">
+                  <span className="text-[11px] font-bold text-[#A1AEC2] uppercase tracking-wider block mb-2">
                     Specialized Branches ({branches[c.id]?.length || 0})
                   </span>
                   {branches[c.id]?.length ? (
@@ -280,14 +303,14 @@ export const AdminCourses: React.FC = () => {
                       {branches[c.id].map((b) => (
                         <span
                           key={b.id}
-                          className="group inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200 hover:border-slate-300"
+                          className="group inline-flex items-center px-2.5 py-1 rounded-lg bg-[#0D1525] text-[#F8FAFC] text-xs font-medium border border-[#23334A] hover:border-[#3B82F6]/50"
                         >
-                          <GitBranch className="w-3 h-3 mr-1 text-slate-400" />
+                          <GitBranch className="w-3 h-3 mr-1 text-[#3B82F6]" />
                           {b.name} ({b.code})
                           <button
                             type="button"
                             onClick={() => openDeleteBranchModal(b)}
-                            className="ml-1.5 text-slate-300 hover:text-rose-600 opacity-60 group-hover:opacity-100 transition-opacity"
+                            className="ml-1.5 text-[#64748B] hover:text-rose-400 opacity-60 group-hover:opacity-100 transition-opacity"
                             title="Delete Branch"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -296,7 +319,7 @@ export const AdminCourses: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 italic">No branches registered yet for this program.</p>
+                    <p className="text-xs text-[#64748B] italic">No branches registered yet for this program.</p>
                   )}
                 </div>
               </div>
@@ -318,57 +341,57 @@ export const AdminCourses: React.FC = () => {
 
       {/* Add Course Modal */}
       {courseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative">
             <button
               onClick={() => setCourseModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Add Academic Program</h3>
-            <p className="text-xs text-slate-500 mb-6">Enter program code, department, and duration.</p>
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Add Academic Program</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Enter program code, department, and duration.</p>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             <form onSubmit={handleCreateCourse} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Program Code *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Program Code *</label>
                 <input
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="e.g. BTECH, MCA, MBA"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none uppercase"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Program Full Name *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Degree Name *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Bachelor of Technology"
+                  placeholder="Bachelor of Technology"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Department *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Department *</label>
                 <select
                   value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : '')}
+                  onChange={(e) => setDepartmentId(Number(e.target.value))}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 >
                   <option value="">Select Department</option>
                   {departments.map((d) => (
@@ -381,43 +404,44 @@ export const AdminCourses: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (Years)</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Duration (Years)</label>
                   <input
                     type="number"
-                    min={1}
-                    max={6}
+                    min="1"
+                    max="6"
                     value={durationYears}
                     onChange={(e) => setDurationYears(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Total Semesters</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Total Semesters</label>
                   <input
                     type="number"
-                    min={1}
-                    max={12}
+                    min="1"
+                    max="12"
                     value={totalSemesters}
                     onChange={(e) => setTotalSemesters(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setCourseModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
                   {submitting ? 'Creating...' : 'Create Program'}
                 </button>
@@ -429,76 +453,76 @@ export const AdminCourses: React.FC = () => {
 
       {/* Edit Course Modal */}
       {editCourseModalOpen && editingCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative">
             <button
-              onClick={() => setEditCourseModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              onClick={() => {
+                setEditCourseModalOpen(false);
+                setEditingCourse(null);
+              }}
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Edit Program</h3>
-            <p className="text-xs text-slate-500 mb-5">Editing: <span className="font-mono text-slate-800">{editingCourse.code}</span></p>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Edit Program</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Editing {editingCourse.code}</p>
 
             <form onSubmit={handleUpdateCourse} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Program Full Name *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Degree Name *</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (Years)</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Duration (Years)</label>
                   <input
                     type="number"
-                    min={1}
-                    max={6}
+                    min="1"
+                    max="6"
                     value={editDuration}
                     onChange={(e) => setEditDuration(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Total Semesters</label>
+                  <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Total Semesters</label>
                   <input
                     type="number"
-                    min={1}
-                    max={12}
+                    min="1"
+                    max="12"
                     value={editSemesters}
                     onChange={(e) => setEditSemesters(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setEditCourseModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setEditCourseModalOpen(false);
+                    setEditingCourse(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -510,24 +534,24 @@ export const AdminCourses: React.FC = () => {
 
       {/* Delete Course Modal */}
       {deleteCourseModalOpen && deletingCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Degree Program?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-800">{deletingCourse.name}</span> ({deletingCourse.code})?
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Deletion will be blocked if specialized branches or students are associated with this course.
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Program?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to delete <span className="font-semibold text-[#F8FAFC]">{deletingCourse.name}</span> ({deletingCourse.code})?
             </p>
 
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
-                onClick={() => setDeleteCourseModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setDeleteCourseModalOpen(false);
+                  setDeletingCourse(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
@@ -537,7 +561,7 @@ export const AdminCourses: React.FC = () => {
                 disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm"
               >
-                {submitting ? 'Deleting...' : 'Confirm Delete'}
+                {submitting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -546,64 +570,63 @@ export const AdminCourses: React.FC = () => {
 
       {/* Add Branch Modal */}
       {branchModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#23334A] relative">
             <button
-              onClick={() => setBranchModalOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600"
+              onClick={() => {
+                setBranchModalOpen(false);
+                setTargetCourseId(null);
+              }}
+              className="absolute top-5 right-5 p-1 rounded-full text-[#A1AEC2] hover:text-[#F8FAFC]"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Add Specialized Branch</h3>
-            <p className="text-xs text-slate-500 mb-6">Create a discipline under this program.</p>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+            <h3 className="text-xl font-bold font-heading text-[#F8FAFC] mb-1">Add Specialized Branch</h3>
+            <p className="text-xs text-[#A1AEC2] mb-6">Attach a branch or specialization (e.g. CSE, AI & ML, ME).</p>
 
             <form onSubmit={handleCreateBranch} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Code *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Branch Code *</label>
                 <input
                   type="text"
                   value={branchCode}
                   onChange={(e) => setBranchCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. CS, AI, ME, CE"
+                  placeholder="e.g. CSE, AI, ME"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none uppercase"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none uppercase bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Name *</label>
+                <label className="block text-xs font-semibold text-[#A1AEC2] mb-1">Branch Name *</label>
                 <input
                   type="text"
                   value={branchName}
                   onChange={(e) => setBranchName(e.target.value)}
-                  placeholder="e.g. Artificial Intelligence & Machine Learning"
+                  placeholder="Computer Science & Engineering"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#23334A] text-xs focus:ring-2 focus:ring-[#3B82F6] focus:outline-none bg-[#0D1525] text-[#F8FAFC]"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
+              <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setBranchModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setBranchModalOpen(false);
+                    setTargetCourseId(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:opacity-95 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-500/20"
                 >
-                  {submitting ? 'Creating...' : 'Create Branch'}
+                  {submitting ? 'Adding...' : 'Add Branch'}
                 </button>
               </div>
             </form>
@@ -613,24 +636,24 @@ export const AdminCourses: React.FC = () => {
 
       {/* Delete Branch Modal */}
       {deleteBranchModalOpen && deletingBranch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111D30] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#23334A] text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Delete Branch?</h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-800">{deletingBranch.name}</span> ({deletingBranch.code})?
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Deletion will be blocked if students are enrolled in this branch.
+            <h3 className="text-lg font-bold font-heading text-[#F8FAFC]">Delete Branch?</h3>
+            <p className="text-xs text-[#A1AEC2] mt-2">
+              Are you sure you want to remove <span className="font-semibold text-[#F8FAFC]">{deletingBranch.name}</span> ({deletingBranch.code})?
             </p>
 
             <div className="mt-6 flex space-x-3">
               <button
                 type="button"
-                onClick={() => setDeleteBranchModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setDeleteBranchModalOpen(false);
+                  setDeletingBranch(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#23334A] text-xs font-semibold text-[#A1AEC2] hover:bg-[#16243A]"
               >
                 Cancel
               </button>
@@ -640,7 +663,7 @@ export const AdminCourses: React.FC = () => {
                 disabled={submitting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm"
               >
-                {submitting ? 'Deleting...' : 'Confirm Delete'}
+                {submitting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
